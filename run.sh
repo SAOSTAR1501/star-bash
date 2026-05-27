@@ -72,6 +72,73 @@ run_quick_setup_wrapper() {
     bash "$SCRIPT_DIR/deploy-fe/quick_setup_site.sh" "$q_domain" "$q_port" "$q_eco"
 }
 
+run_setup_monitor_menu() {
+    local choice
+    while true; do
+        clear
+        echo -e "${BOLD}${CYAN}"
+        echo "========================================================================"
+        echo "    ⚙️  VPS SETUP & SYSTEM MONITORING SUITE ⚙️                         "
+        echo "========================================================================"
+        echo -e "${NC}"
+        echo -e "${BOLD}${WHITE}Vui lòng chọn một chức năng:${NC}"
+        echo -e " [1] 🚀 ${BOLD}VPS Tool Auto-Installer (setup.sh)${NC}"
+        echo -e "      (Cài đặt nhanh: Node, NPM, Yarn, PM2, Docker, Nginx, Certbot)"
+        echo -e ""
+        echo -e " [2] 📊 ${BOLD}Real-time VPS Resource Dashboard (sys_monitor.sh)${NC}"
+        echo -e "      (Theo dõi realtime CPU, RAM, Disk, Mạng)"
+        echo -e ""
+        echo -e " [3] ⚙️  ${BOLD}Configure Telegram Alert (sys_monitor.sh config)${NC}"
+        echo -e "      (Cài đặt Token Bot & Chat ID cảnh báo quá tải)"
+        echo -e ""
+        echo -e " [4] 🔔 ${BOLD}Run Instant Resource Check & Test Alert${NC}"
+        echo -e "      (Kiểm tra nhanh tài nguyên một lần & test gửi cảnh báo)"
+        echo -e ""
+        echo -e " [0] 🔙 ${BOLD}Quay lại Menu chính${NC}"
+        echo -e "${BOLD}${CYAN}========================================================================${NC}"
+        read -p "Nhập lựa chọn của bạn [0-4]: " choice
+
+        case "$choice" in
+            1)
+                if [ -f "$SCRIPT_DIR/setup-server/setup.sh" ]; then
+                    bash "$SCRIPT_DIR/setup-server/setup.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script setup tại $SCRIPT_DIR/setup-server/setup.sh"
+                fi
+                ;;
+            2)
+                if [ -f "$SCRIPT_DIR/setup-server/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/setup-server/sys_monitor.sh" dashboard
+                else
+                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup-server/sys_monitor.sh"
+                fi
+                ;;
+            3)
+                if [ -f "$SCRIPT_DIR/setup-server/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/setup-server/sys_monitor.sh" config
+                else
+                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup-server/sys_monitor.sh"
+                fi
+                ;;
+            4)
+                if [ -f "$SCRIPT_DIR/setup-server/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/setup-server/sys_monitor.sh" check
+                else
+                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup-server/sys_monitor.sh"
+                fi
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 4."
+                ;;
+        esac
+        echo -e "\n${INFO} Nhấn Enter để quay lại Menu công cụ..."
+        read -r temp
+    done
+}
+
 main_menu() {
     local choice
     while true; do
@@ -86,9 +153,12 @@ main_menu() {
         echo -e " [3] ⚡ ${BOLD}Quick FE Site Deployer (Automated)${NC}"
         echo -e "      (Nhập nhanh tham số để tự động sinh cấu hình Nginx, PM2, SSL)"
         echo -e ""
+        echo -e " [4] ⚙️  ${BOLD}VPS Server Setup & Resource Monitor Suite${NC}"
+        echo -e "      (Cài đặt công cụ VPS và giám sát tài nguyên VPS tự động)"
+        echo -e ""
         echo -e " [0] 🚪 ${BOLD}Thoát chương trình${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-3]: " choice
+        read -p "Nhập lựa chọn của bạn [0-4]: " choice
 
         case "$choice" in
             1)
@@ -112,12 +182,15 @@ main_menu() {
                     echo -e "${CROSS} Không tìm thấy file script deploy tại $SCRIPT_DIR/deploy-fe/quick_setup_site.sh"
                 fi
                 ;;
+            4)
+                run_setup_monitor_menu
+                ;;
             0)
                 echo -e "\n${BOLD}${GREEN}Cảm ơn bạn đã sử dụng Star-Bash Suite. Hẹn gặp lại!${NC}\n"
                 exit 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 3."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 4."
                 ;;
         esac
         
