@@ -1,0 +1,230 @@
+{
+    "object_kind": "pipeline",
+    "object_attributes": {
+        "id": 606,
+        "iid": 3,
+        "name": null,
+        "ref": "main",
+        "ref_status_name": "failed",
+        "tag": false,
+        "sha": "9e21301a7ee5826a04d84199928f4c31454b77c9",
+        "before_sha": "01b31993ef97c0e5f017568a08545ef2037ad104",
+        "source": "push",
+        "status": "failed",
+        "detailed_status": "failed",
+        "stages": [
+            "build",
+            "test"
+        ],
+        "created_at": "2026-05-18T07:03:18.549Z",
+        "finished_at": "2026-05-18T09:00:06.459Z",
+        "duration": 0,
+        "queued_duration": 7005,
+        "protected_ref": true,
+        "variables": [],
+        "url": "http://192.168.1.138/vitechgroup/mkt-fb-android/-/pipelines/606"
+    },
+    "merge_request": null,
+    "user": {
+        "id": 12,
+        "name": "Mai Công Sao",
+        "username": "saomc",
+        "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+        "email": "[REDACTED]"
+    },
+    "project": {
+        "id": 267,
+        "name": "mkt-fb-android",
+        "description": null,
+        "web_url": "http://192.168.1.138/vitechgroup/mkt-fb-android",
+        "avatar_url": null,
+        "git_ssh_url": "ssh://git@192.168.1.138:2222/vitechgroup/mkt-fb-android.git",
+        "git_http_url": "http://192.168.1.138/vitechgroup/mkt-fb-android.git",
+        "namespace": "VitechGroup",
+        "visibility_level": 0,
+        "path_with_namespace": "vitechgroup/mkt-fb-android",
+        "default_branch": "main",
+        "ci_config_path": null
+    },
+    "commit": {
+        "id": "9e21301a7ee5826a04d84199928f4c31454b77c9",
+        "message": "Merge branch 'dev' into 'main'\n\nfeat: init base project\n\nSee merge request vitechgroup/mkt-fb-android!1",
+        "title": "Merge branch 'dev' into 'main'",
+        "timestamp": "2026-05-18T07:03:17+00:00",
+        "url": "http://192.168.1.138/vitechgroup/mkt-fb-android/-/commit/9e21301a7ee5826a04d84199928f4c31454b77c9",
+        "author": {
+            "name": "Mai Công Sao",
+            "email": "[REDACTED]"
+        }
+    },
+    "builds": [
+        {
+            "id": 3498,
+            "stage": "test",
+            "name": "container_scanning",
+            "status": "skipped",
+            "created_at": "2026-05-18T07:03:18.568Z",
+            "started_at": null,
+            "finished_at": null,
+            "duration": null,
+            "queued_duration": null,
+            "failure_reason": null,
+            "when": "on_success",
+            "manual": false,
+            "allow_failure": true,
+            "user": {
+                "id": 12,
+                "name": "Mai Công Sao",
+                "username": "saomc",
+                "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+                "email": "[REDACTED]"
+            },
+            "runner": null,
+            "artifacts_file": {
+                "filename": null,
+                "size": null
+            },
+            "environment": null
+        },
+        {
+            "id": 3499,
+            "stage": "test",
+            "name": "semgrep-sast",
+            "status": "skipped",
+            "created_at": "2026-05-18T07:03:18.571Z",
+            "started_at": null,
+            "finished_at": null,
+            "duration": null,
+            "queued_duration": null,
+            "failure_reason": null,
+            "when": "on_success",
+            "manual": false,
+            "allow_failure": true,
+            "user": {
+                "id": 12,
+                "name": "Mai Công Sao",
+                "username": "saomc",
+                "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+                "email": "[REDACTED]"
+            },
+            "runner": null,
+            "artifacts_file": {
+                "filename": null,
+                "size": null
+            },
+            "environment": null
+        },
+        {
+            "id": 3496,
+            "stage": "test",
+            "name": "test",
+            "status": "failed",
+            "created_at": "2026-05-18T07:03:18.563Z",
+            "started_at": null,
+            "finished_at": "2026-05-18T09:00:03.408Z",
+            "duration": null,
+            "queued_duration": 7004.537008,
+            "failure_reason": "stuck_or_timeout_failure",
+            "when": "on_success",
+            "manual": false,
+            "allow_failure": false,
+            "user": {
+                "id": 12,
+                "name": "Mai Công Sao",
+                "username": "saomc",
+                "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+                "email": "[REDACTED]"
+            },
+            "runner": null,
+            "artifacts_file": {
+                "filename": null,
+                "size": null
+            },
+            "environment": null
+        },
+        {
+            "id": 3500,
+            "stage": "test",
+            "name": "secret_detection",
+            "status": "skipped",
+            "created_at": "2026-05-18T07:03:18.573Z",
+            "started_at": null,
+            "finished_at": null,
+            "duration": null,
+            "queued_duration": null,
+            "failure_reason": null,
+            "when": "on_success",
+            "manual": false,
+            "allow_failure": true,
+            "user": {
+                "id": 12,
+                "name": "Mai Công Sao",
+                "username": "saomc",
+                "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+                "email": "[REDACTED]"
+            },
+            "runner": null,
+            "artifacts_file": {
+                "filename": null,
+                "size": null
+            },
+            "environment": null
+        },
+        {
+            "id": 3497,
+            "stage": "test",
+            "name": "code_quality",
+            "status": "failed",
+            "created_at": "2026-05-18T07:03:18.566Z",
+            "started_at": null,
+            "finished_at": "2026-05-18T09:00:03.510Z",
+            "duration": null,
+            "queued_duration": 7004.604819,
+            "failure_reason": "stuck_or_timeout_failure",
+            "when": "on_success",
+            "manual": false,
+            "allow_failure": true,
+            "user": {
+                "id": 12,
+                "name": "Mai Công Sao",
+                "username": "saomc",
+                "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+                "email": "[REDACTED]"
+            },
+            "runner": null,
+            "artifacts_file": {
+                "filename": null,
+                "size": null
+            },
+            "environment": null
+        },
+        {
+            "id": 3495,
+            "stage": "build",
+            "name": "build",
+            "status": "failed",
+            "created_at": "2026-05-18T07:03:18.556Z",
+            "started_at": null,
+            "finished_at": "2026-05-18T09:00:03.255Z",
+            "duration": null,
+            "queued_duration": 7004.462451,
+            "failure_reason": "stuck_or_timeout_failure",
+            "when": "on_success",
+            "manual": false,
+            "allow_failure": false,
+            "user": {
+                "id": 12,
+                "name": "Mai Công Sao",
+                "username": "saomc",
+                "avatar_url": "http://192.168.1.138/uploads/-/system/user/avatar/12/avatar.png",
+                "email": "[REDACTED]"
+            },
+            "runner": null,
+            "artifacts_file": {
+                "filename": null,
+                "size": null
+            },
+            "environment": null
+        }
+    ]
+}

@@ -1,0 +1,87 @@
+{
+    "msg_type": "interactive",
+    "card": {
+        "config": {
+            "wide_screen_mode": true,
+            "enable_forward": true
+        },
+        "header": {
+            "template": "red",
+            "title": {
+                "tag": "plain_text",
+                "content": "Job Failed - {{project.name}}"
+            }
+        },
+        "elements": [
+            {
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": "📦 **Job:** `{{build_name}}` (Stage: `{{build_stage}}`)\n💬 **Message:**\n{{commit.message}}"
+                }
+            },
+            {
+                "tag": "hr"
+            },
+            {
+                "tag": "div",
+                "fields": [
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🌿 **Branch:**\n`{{ref}}`"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "👤 **Executor:**\n<font color='blue'>{{user.name}}</font>"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🆔 **Job ID / Retries:**\n#{{build_id}} (Retry: {{retries_count}})"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🚦 **Job Status:**\n<font color='red'>● {{build_status}}</font>"
+                        }
+                    }
+                ]
+            },
+            {
+                "tag": "hr"
+            },
+            {
+                "tag": "note",
+                "elements": [
+                    {
+                        "tag": "plain_text",
+                        "content": "⚠️ Failure Reason: {{build_failure_reason}} | Runner: {{runner.description}} (ID: #{{runner.id}})"
+                    }
+                ]
+            },
+            {
+                "tag": "action",
+                "actions": [
+                    {
+                        "tag": "button",
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "View Job Logs"
+                        },
+                        "type": "danger",
+                        "url": "{{project.web_url}}/-/jobs/{{build_id}}"
+                    }
+                ]
+            }
+        ]
+    }
+}

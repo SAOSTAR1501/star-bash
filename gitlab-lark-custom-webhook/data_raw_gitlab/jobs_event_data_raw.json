@@ -1,0 +1,82 @@
+{
+    "object_kind": "build",
+    "ref": "main",
+    "tag": false,
+    "before_sha": "cea549a950cbc5840a711a09510047e6c1866082",
+    "sha": "97d42233cb615f5111e22f6ce9c0d2b82256c67b",
+    "retries_count": 2,
+    "build_id": 3728,
+    "build_name": "build",
+    "build_stage": "build",
+    "build_status": "failed",
+    "build_created_at": "2026-05-26T01:13:17.815Z",
+    "build_started_at": "2026-05-26T01:13:19.874Z",
+    "build_finished_at": "2026-05-26T01:13:22.023Z",
+    "build_created_at_iso": "2026-05-26T01:13:17Z",
+    "build_started_at_iso": "2026-05-26T01:13:19Z",
+    "build_finished_at_iso": "2026-05-26T01:13:22Z",
+    "build_duration": 2.14916,
+    "build_queued_duration": 1.962005,
+    "build_allow_failure": false,
+    "build_failure_reason": "script_failure",
+    "pipeline_id": 683,
+    "runner": {
+        "id": 3,
+        "description": "admin-runner",
+        "runner_type": "project_type",
+        "active": true,
+        "is_shared": false,
+        "tags": [
+            "shell",
+            "deploy"
+        ]
+    },
+    "project_id": 187,
+    "project_name": "VitechGroup / system-zl-next",
+    "user": {
+        "id": 14,
+        "name": "Vũ Xuân Huy",
+        "username": "huyvx",
+        "avatar_url": "https://www.gravatar.com/avatar/e5f5d7e17c5a0afb8fd090cc8169176bdb4e6bf3fe2b16095e5bd6b547b679dc?s=80&d=identicon",
+        "email": "[REDACTED]"
+    },
+    "commit": {
+        "id": 683,
+        "name": null,
+        "sha": "97d42233cb615f5111e22f6ce9c0d2b82256c67b",
+        "message": "Merge branch 'dev' into 'main'\n\nfeat: extra upload file multiple\n\nSee merge request vitechgroup/system-zl-next!5",
+        "author_name": "Vũ Xuân Huy",
+        "author_email": "[REDACTED]",
+        "author_url": "http://192.168.1.138/huyvx",
+        "status": "failed",
+        "duration": 2,
+        "started_at": "2026-05-26T01:08:37.450Z",
+        "finished_at": "2026-05-26T01:13:22.123Z",
+        "started_at_iso": "2026-05-26T01:08:37Z",
+        "finished_at_iso": "2026-05-26T01:13:22Z"
+    },
+    "repository": {
+        "name": "system-zl-next",
+        "url": "ssh://git@192.168.1.138:2222/vitechgroup/system-zl-next.git",
+        "description": null,
+        "homepage": "http://192.168.1.138/vitechgroup/system-zl-next",
+        "git_http_url": "http://192.168.1.138/vitechgroup/system-zl-next.git",
+        "git_ssh_url": "ssh://git@192.168.1.138:2222/vitechgroup/system-zl-next.git",
+        "visibility_level": 0
+    },
+    "project": {
+        "id": 187,
+        "name": "system-zl-next",
+        "description": null,
+        "web_url": "http://192.168.1.138/vitechgroup/system-zl-next",
+        "avatar_url": null,
+        "git_ssh_url": "ssh://git@192.168.1.138:2222/vitechgroup/system-zl-next.git",
+        "git_http_url": "http://192.168.1.138/vitechgroup/system-zl-next.git",
+        "namespace": "VitechGroup",
+        "visibility_level": 0,
+        "path_with_namespace": "vitechgroup/system-zl-next",
+        "default_branch": "main",
+        "ci_config_path": null
+    },
+    "environment": null
+}

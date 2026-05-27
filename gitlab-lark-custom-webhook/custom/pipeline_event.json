@@ -1,0 +1,96 @@
+{
+    "msg_type": "interactive",
+    "card": {
+        "config": {
+            "wide_screen_mode": true,
+            "enable_forward": true
+        },
+        "header": {
+            "template": "red",
+            "title": {
+                "tag": "plain_text",
+                "content": "Pipeline Failed - {{project.name}}"
+            }
+        },
+        "elements": [
+            {
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": "💬 **Message:**\n{{commit.title}}\n\n📄 **Commit:**\n`{{commit.id}}` — *{{commit.message}}*"
+                }
+            },
+            {
+                "tag": "hr"
+            },
+            {
+                "tag": "div",
+                "fields": [
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🌿 **Branch:**\n`{{object_attributes.ref}}`"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "👤 **Author:**\n<font color='blue'>{{user.name}}</font>"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🆔 **Pipeline ID:**\n#{{object_attributes.id}}"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🚦 **Status:**\n<font color='red'>● {{object_attributes.status}}</font>"
+                        }
+                    }
+                ]
+            },
+            {
+                "tag": "hr"
+            },
+            {
+                "tag": "note",
+                "elements": [
+                    {
+                        "tag": "plain_text",
+                        "content": "⚠️ Note: Check your GitLab Runner setup. One or more jobs failed due to timeout or being stuck (stuck_or_timeout_failure)."
+                    }
+                ]
+            },
+            {
+                "tag": "action",
+                "actions": [
+                    {
+                        "tag": "button",
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "View Pipeline Logs"
+                        },
+                        "type": "danger",
+                        "url": "{{object_attributes.url}}"
+                    },
+                    {
+                        "tag": "button",
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "View Commit"
+                        },
+                        "type": "default",
+                        "url": "{{commit.url}}"
+                    }
+                ]
+            }
+        ]
+    }
+}

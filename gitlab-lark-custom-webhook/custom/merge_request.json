@@ -1,0 +1,93 @@
+{
+    "msg_type": "interactive",
+    "card": {
+        "config": {
+            "wide_screen_mode": true,
+            "enable_forward": true
+        },
+        "header": {
+            "template": "indigo",
+            "title": {
+                "tag": "plain_text",
+                "content": " Gitlab · {{project.name}}"
+            }
+        },
+        "elements": [
+            {
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": "✨ **{{object_attributes.title}}**"
+                }
+            },
+            {
+                "tag": "div",
+                "fields": [
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "👤 **Author**\n<font color='blue'>{{user.name}}</font>"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "⚙️ **Action**\n<font color='green'>**{{object_attributes.action}}**</font>"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🌿 **Branch Flow**\n`{{object_attributes.source_branch}}` ➔ `{{object_attributes.target_branch}}`"
+                        }
+                    },
+                    {
+                        "is_short": true,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "🚦 **Merge Status**\n<font color='green'>● {{object_attributes.detailed_merge_status}}</font>"
+                        }
+                    }
+                ]
+            },
+            {
+                "tag": "hr"
+            },
+            {
+                "tag": "note",
+                "elements": [
+                    {
+                        "tag": "plain_text",
+                        "content": "💬 Latest Commit: {{object_attributes.last_commit.message}}"
+                    }
+                ]
+            },
+            {
+                "tag": "action",
+                "actions": [
+                    {
+                        "tag": "button",
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "Review Merge Request"
+                        },
+                        "type": "primary",
+                        "url": "{{object_attributes.url}}"
+                    },
+                    {
+                        "tag": "button",
+                        "text": {
+                            "tag": "plain_text",
+                            "content": "View Commit"
+                        },
+                        "type": "default",
+                        "url": "{{object_attributes.last_commit.url}}"
+                    }
+                ]
+            }
+        ]
+    }
+}
