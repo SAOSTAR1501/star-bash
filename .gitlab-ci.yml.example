@@ -44,8 +44,8 @@ build-staging:
     paths:
       - .next/
       - public/
-      - node_modules/
       - package.json
+      - package-lock.json
       - ecosystem.config.js
       - .env.local
 
@@ -70,8 +70,8 @@ build-production:
     paths:
       - .next/
       - public/
-      - node_modules/
       - package.json
+      - package-lock.json
       - ecosystem.config.js
       - .env.local
 
@@ -96,19 +96,20 @@ deploy-staging:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - echo "==> Bắt đầu nén gói build..."
-    - tar -czf build.tar.gz .next public node_modules package.json ecosystem.config.js .env.local
+    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
     
     - echo "==> Đang tải gói build lên thư mục Staging trên VPS..."
     # Đẩy file tar.gz lên VPS bằng user 'deployer' an toàn
     - scp build.tar.gz deployer@$VPS_IP:/var/www/nextjs-app/staging/
     
-    - echo "==> Giải nén và ra lệnh PM2 khởi động lại ứng dụng..."
+    - echo "==> Giải nén, cài đặt thư viện production và ra lệnh PM2 khởi động lại ứng dụng..."
     - ssh deployer@$VPS_IP "
         cd /var/www/nextjs-app/staging/ &&
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
-        # Nạp biến môi trường cho phiên chạy và reload dịch vụ Next.js trên PM2
+        # Nạp biến môi trường cho phiên chạy, cài đặt dependencies và reload dịch vụ Next.js trên PM2
         export PATH=\$PATH:/usr/bin:/usr/local/bin &&
+        npm install --omit=dev --prefer-offline --no-audit &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường STAGING thành công!"
@@ -129,17 +130,18 @@ deploy-production:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - echo "==> Bắt đầu nén gói build..."
-    - tar -czf build.tar.gz .next public node_modules package.json ecosystem.config.js .env.local
+    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
     
     - echo "==> Đang tải gói build lên thư mục Production trên VPS..."
     - scp build.tar.gz deployer@$VPS_IP:/var/www/nextjs-app/production/
     
-    - echo "==> Giải nén và ra lệnh PM2 khởi động lại ứng dụng..."
+    - echo "==> Giải nén, cài đặt thư viện production và ra lệnh PM2 khởi động lại ứng dụng..."
     - ssh deployer@$VPS_IP "
         cd /var/www/nextjs-app/production/ &&
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
         export PATH=\$PATH:/usr/bin:/usr/local/bin &&
+        npm install --omit=dev --prefer-offline --no-audit &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường PRODUCTION thành công!"

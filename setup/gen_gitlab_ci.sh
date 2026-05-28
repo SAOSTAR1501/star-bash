@@ -178,8 +178,8 @@ build-staging:
     paths:
       - .next/
       - public/
-      - node_modules/
       - package.json
+      - package-lock.json
       - ecosystem.config.js
       - .env.local
 
@@ -202,8 +202,8 @@ build-production:
     paths:
       - .next/
       - public/
-      - node_modules/
       - package.json
+      - package-lock.json
       - ecosystem.config.js
       - .env.local
 
@@ -225,15 +225,16 @@ deploy-staging:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - echo "==> Nén gói build..."
-    - tar -czf build.tar.gz .next public node_modules package.json ecosystem.config.js .env.local
+    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
     - echo "==> Đẩy gói build lên VPS..."
     - scp build.tar.gz deployer@\$VPS_IP:${APP_PATH}/
-    - echo "==> Giải nén và PM2 reload..."
+    - echo "==> Giải nén, cài đặt thư viện production và PM2 reload..."
     - ssh deployer@\$VPS_IP "
         cd ${APP_PATH}/ &&
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
         export PATH=\\\$PATH:/usr/bin:/usr/local/bin &&
+        npm install --omit=dev --prefer-offline --no-audit &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường STAGING thành công!"
@@ -253,15 +254,16 @@ deploy-production:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - echo "==> Nén gói build..."
-    - tar -czf build.tar.gz .next public node_modules package.json ecosystem.config.js .env.local
+    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
     - echo "==> Đẩy gói build lên VPS..."
     - scp build.tar.gz deployer@\$VPS_IP:${APP_PATH}/
-    - echo "==> Giải nén và PM2 reload..."
+    - echo "==> Giải nén, cài đặt thư viện production và PM2 reload..."
     - ssh deployer@\$VPS_IP "
         cd ${APP_PATH}/ &&
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
         export PATH=\\\$PATH:/usr/bin:/usr/local/bin &&
+        npm install --omit=dev --prefer-offline --no-audit &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường PRODUCTION thành công!"
