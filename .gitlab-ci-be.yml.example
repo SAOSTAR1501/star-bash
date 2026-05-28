@@ -1,0 +1,143 @@
+# ==============================================================================
+# GitLab CI/CD Pipeline Blueprint for Backend running with Docker / Docker Compose
+# Stages: Build (Clean codebase pack) -> Deploy Staging (develop) -> Deploy Production (main)
+# Security Hardened: Non-root 'deployer' user, secure .env injecting, no sudo needed
+# ==============================================================================
+
+stages:
+  - build
+  - deploy
+
+# ==============================================================================
+# STAGE 1: BUILD STAGE (Đóng gói mã nguồn sạch & Inject biến môi trường)
+# ==============================================================================
+build-staging:
+  stage: build
+  image: alpine:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  variables:
+    # Biến $ENV_LOCAL_DEVELOP chứa nội dung file .env cấu hình cho Staging
+    ENV_FILE: $ENV_LOCAL_DEVELOP
+  before_script:
+    - apk add --no-cache tar
+  script:
+    - echo "==> Chuẩn bị mã nguồn sạch cho môi trường Staging..."
+    # Copy cấu hình biến môi trường từ GitLab CI Variables vào dự án
+    - if [ -n "$ENV_FILE" ]; then echo "$ENV_FILE" > .env; fi
+  artifacts:
+    name: "staging-build-$CI_COMMIT_REF_SLUG"
+    expire_in: 3 days
+    paths:
+      - ./
+    exclude:
+      - .git/**/*
+      - node_modules/**/*
+      - vendor/**/*
+      - .gitignore
+      - .gitlab-ci.yml
+
+build-production:
+  stage: build
+  image: alpine:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    # Biến $ENV_LOCAL_PRODUCTION chứa nội dung file .env cấu hình cho Production
+    ENV_FILE: $ENV_LOCAL_PRODUCTION
+  before_script:
+    - apk add --no-cache tar
+  script:
+    - echo "==> Chuẩn bị mã nguồn sạch cho môi trường Production..."
+    # Copy cấu hình biến môi trường từ GitLab CI Variables vào dự án
+    - if [ -n "$ENV_FILE" ]; then echo "$ENV_FILE" > .env; fi
+  artifacts:
+    name: "production-build-$CI_COMMIT_REF_SLUG"
+    expire_in: 7 days
+    paths:
+      - ./
+    exclude:
+      - .git/**/*
+      - node_modules/**/*
+      - vendor/**/*
+      - .gitignore
+      - .gitlab-ci.yml
+
+# ==============================================================================
+# STAGE 2: DEPLOY STAGES (SSH Non-Root to VPS Host & Trigger deploy.sh)
+# ==============================================================================
+deploy-staging:
+  stage: deploy
+  image: alpine:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  dependencies:
+    - build-staging
+  before_script:
+    - apk add --no-cache openssh-client tar
+    - mkdir -p ~/.ssh
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+    - echo "==> Bắt đầu nén gói mã nguồn chuẩn..."
+    - tar -czf build.tar.gz --exclude=build.tar.gz .
+    
+    - echo "==> Đang tải gói mã nguồn lên thư mục Staging trên VPS..."
+    # Thư mục /home/api.vitech.vn-develop tương ứng với domain + branch Staging
+    - scp build.tar.gz deployer@$VPS_IP:/home/api.vitech.vn-develop/
+    
+    - echo "==> Giải nén và thực thi kịch bản Docker deploy.sh..."
+    - ssh deployer@$VPS_IP "
+        cd /home/api.vitech.vn-develop/ &&
+        tar -xzf build.tar.gz &&
+        rm -f build.tar.gz &&
+        export PATH=\$PATH:/usr/bin:/usr/local/bin &&
+        bash deploy.sh
+      "
+    - echo "✅ Deploy Docker Backend lên môi trường STAGING thành công!"
+
+deploy-production:
+  stage: deploy
+  image: alpine:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  dependencies:
+    - build-production
+  before_script:
+    - apk add --no-cache openssh-client tar
+    - mkdir -p ~/.ssh
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+    - echo "==> Bắt đầu nén gói mã nguồn chuẩn..."
+    - tar -czf build.tar.gz --exclude=build.tar.gz .
+    
+    - echo "==> Đang tải gói mã nguồn lên thư mục Production trên VPS..."
+    # Thư mục /home/api.vitech.vn tương ứng với domain chính
+    - scp build.tar.gz deployer@$VPS_IP:/home/api.vitech.vn/
+    
+    - echo "==> Giải nén và thực thi kịch bản Docker deploy.sh..."
+    - ssh deployer@$VPS_IP "
+        cd /home/api.vitech.vn/ &&
+        tar -xzf build.tar.gz &&
+        rm -f build.tar.gz &&
+        export PATH=\$PATH:/usr/bin:/usr/local/bin &&
+        bash deploy.sh
+      "
+    - echo "✅ Deploy Docker Backend lên môi trường PRODUCTION thành công!"
+
+# ==============================================================================
+# HƯỚNG DẪN CẤU HÌNH TRÊN GITLAB UI (SETTINGS -> CI/CD -> VARIABLES):
+# ==============================================================================
+# 1. VPS_IP (Variable): Địa chỉ IP public của VPS.
+# 2. SSH_PRIVATE_KEY (Variable): Nội dung file Private Key của user 'deployer' trên VPS.
+#    (Lấy từ file: /home/deployer/.ssh/id_ed25519_deployer hoặc id_rsa của deployer)
+# 3. ENV_LOCAL_DEVELOP (Variable): Nội dung file cấu hình biến môi trường Staging (.env).
+# 4. ENV_LOCAL_PRODUCTION (Variable): Nội dung file cấu hình biến môi trường Production (.env).
+#
+# 👉 LƯU Ý BẢO MẬT QUAN TRỌNG:
+#    - User 'deployer' PHẢI thuộc nhóm 'docker' trên VPS để chạy lệnh Docker không cần sudo.
+#    - Lệnh này được chạy tự động bởi orchestrate_be_project.sh: `usermod -aG docker deployer`
+# ==============================================================================

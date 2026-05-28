@@ -1,12 +1,12 @@
 #!/bin/bash
 # ==============================================================================
-# Script Name   : orchestrate_new_project.sh
-# Description   : Comprehensive Orchestrator for setting up new FE/BE Next.js
-#                 projects on VPS (Restricted Clone, PM2, Nginx, SSL, GitLab CI).
+# Script Name   : orchestrate_fe_project.sh
+# Description   : Dedicated FE Next.js Orchestrator (Clone, PM2 Cluster, Nginx,
+#                 Certbot SSL, Optimized Multi-branch GitLab CI/CD).
 # Author        : Antigravity AI
 # Version       : 1.0.0
 # Compatibility : Ubuntu, Debian
-# Usage         : sudo bash orchestrate_new_project.sh
+# Usage         : sudo bash orchestrate_fe_project.sh
 # ==============================================================================
 
 set -uo pipefail
@@ -35,7 +35,7 @@ fi
 
 clear
 echo -e "${BOLD}${CYAN}========================================================================${NC}"
-echo -e "       🦊 TRÌNH ĐIỀU PHỐI KHỞI TẠO & TRIỂN KHAI DỰ ÁN MỚI 🦊          "
+echo -e "       🚀 TRÌNH ĐIỀU PHỐI KHỞI TẠO DỰ ÁN FRONTEND (NEXT.JS / PM2) 🚀   "
 echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
 
 # ==============================================================================
@@ -62,8 +62,6 @@ if ! getent passwd deployer &>/dev/null; then
     fi
 else
     echo -e "${TICK} User '${BOLD}deployer${NC}' đã tồn tại sẵn."
-    # Đảm bảo user deployer thuộc nhóm docker để có quyền chạy deploy BE
-    usermod -aG docker deployer &>/dev/null || true
 fi
 
 # 2. Kiểm tra GitLab Runner
@@ -85,13 +83,13 @@ else
 fi
 
 # ==============================================================================
-# BƯỚC 2: THU THẬP THÔNG TIN TƯƠNG TÁC (INTERACTIVE INPUTS)
+# BƯỚC 2: THU THẬP THÔNG TIN TƯƠNG TÁC
 # ==============================================================================
-echo -e "\n${BOLD}${WHITE}==> Bước 2: Nhập thông tin dự án mới${NC}"
+echo -e "\n${BOLD}${WHITE}==> Bước 2: Nhập thông tin dự án Frontend mới${NC}"
 
-# 1. Nhập Domain (Tên miền và tên thư mục luôn)
+# 1. Nhập Domain
 while true; do
-    read -p "👉 Nhập tên miền chạy dự án (Ví dụ: vitech.vn): " domain
+    read -p "👉 Nhập tên miền chạy dự án FE (Ví dụ: vitech.vn): " domain
     domain=$(echo "$domain" | tr -d '[:space:]')
     if [ -n "$domain" ]; then
         break
@@ -113,28 +111,10 @@ while true; do
     fi
 done
 
-# 3. Chọn loại dự án (FE/BE)
-project_type=""
-while true; do
-    echo -e "👉 Chọn loại dự án cần cấu hình:"
-    echo -e "  [1] Frontend (Next.js / React - Tự động tạo PM2 + Nginx + SSL + CI/CD)"
-    echo -e "  [2] Backend (API / Node.js - Tự động tạo Nginx + SSL + CI/CD)"
-    read -p "Nhập lựa chọn của bạn [1-2]: " type_choice
-    if [ "$type_choice" = "1" ]; then
-        project_type="FE"
-        break
-    elif [ "$type_choice" = "2" ]; then
-        project_type="BE"
-        break
-    else
-        echo -e "${CROSS} Lựa chọn không hợp lệ."
-    fi
-done
-
-# 4. Nhập Cổng dịch vụ (Port) và Kiểm tra trùng lặp
+# 3. Nhập Cổng dịch vụ (Port) và Kiểm tra trùng lặp
 port=""
 while true; do
-    read -p "👉 Nhập cổng chạy Node.js cho dự án này (Ví dụ: 3005): " port
+    read -p "👉 Nhập cổng chạy Node.js cho Frontend (Ví dụ: 3000): " port
     if [[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -gt 1024 ] && [ "$port" -lt 65535 ]; then
         # Kiểm tra trùng lặp cổng
         if netstat -tuln 2>/dev/null | grep -q ":${port} "; then
@@ -153,14 +133,8 @@ while true; do
     fi
 done
 
-echo -e "\n${INFO} Thông tin thiết lập dự án của bạn:"
-echo -e " - Thư mục dự án    : ${BOLD}${APP_PATH}${NC}"
-echo -e " - Git Remote URL   : ${BOLD}${git_url}${NC}"
-echo -e " - Loại dự án       : ${BOLD}${project_type}${NC}"
-echo -e " - Cổng chạy Node   : ${BOLD}${port}${NC}"
-
 # ==============================================================================
-# BƯỚC 3: CLONE MÃ NGUỒN AN TOÀN (DƯỚI QUYỀN DEPLOYER)
+# BƯỚC 3: CLONE MÃ NGUỒN AN TOÀN
 # ==============================================================================
 echo -e "\n${BOLD}${WHITE}==> Bước 3: Thực hiện tải mã nguồn (Clone Repo) dưới quyền deployer${NC}"
 
@@ -174,19 +148,17 @@ if [ -d "$APP_PATH" ]; then
         echo -e "${INFO} Đang xóa thư mục cũ..."
         rm -rf "$APP_PATH"
     elif [ "$dir_choice" = "3" ]; then
-        echo -e "${CROSS} Tiến trình bị hủy bởi người dùng."
+        echo -e "${CROSS} Tiến trình bị hủy."
         exit 0
     fi
 fi
 
 if [ ! -d "$APP_PATH" ]; then
     echo -e "${INFO} Đang clone mã nguồn từ GitLab bằng quyền user '${BOLD}deployer${NC}'..."
-    # Gọi clone dưới quyền deployer để tránh xung đột SSH key của root
     if sudo -u deployer git clone "$git_url" "$APP_PATH"; then
         echo -e "${TICK} Clone mã nguồn thành công về thư mục: ${BOLD}${APP_PATH}${NC}"
     else
         echo -e "${CROSS} Lỗi: Clone mã nguồn thất bại."
-        echo -e "${INFO} Gợi ý: Hãy chắc chắn bạn đã add SSH public key của deployer vào tài khoản GitLab."
         exit 1
     fi
 else
@@ -194,24 +166,23 @@ else
 fi
 
 # ==============================================================================
-# BƯỚC 4: SINH CẤU HÌNH PM2 ECOSYSTEM (CHỈ CHO FE)
+# BƯỚC 4: SINH CẤU HÌNH PM2 ECOSYSTEM CLUSTER MODE
 # ==============================================================================
-if [ "$project_type" = "FE" ]; then
-    echo -e "\n${BOLD}${WHITE}==> Bước 4: Thiết lập file cấu hình PM2 Cluster Mode cho Frontend${NC}"
-    ECO_FILE="${APP_PATH}/ecosystem.config.js"
-    write_eco="y"
-    
-    if [ -f "$ECO_FILE" ]; then
-        echo -e "${WARN} File ${BOLD}ecosystem.config.js${NC} đã tồn tại trong dự án."
-        read -p "❓ Bạn có muốn ghi đè bằng cấu hình tối ưu mới không? (y/N): " overwrite_eco
-        overwrite_eco=${overwrite_eco:-"n"}
-        if [[ ! "$overwrite_eco" =~ ^[yY] ]]; then
-            write_eco="n"
-        fi
+echo -e "\n${BOLD}${WHITE}==> Bước 4: Thiết lập file cấu hình PM2 Cluster Mode cho Frontend${NC}"
+ECO_FILE="${APP_PATH}/ecosystem.config.js"
+write_eco="y"
+
+if [ -f "$ECO_FILE" ]; then
+    echo -e "${WARN} File ${BOLD}ecosystem.config.js${NC} đã tồn tại trong dự án."
+    read -p "❓ Bạn có muốn ghi đè bằng cấu hình tối ưu mới không? (y/N): " overwrite_eco
+    overwrite_eco=${overwrite_eco:-"n"}
+    if [[ ! "$overwrite_eco" =~ ^[yY] ]]; then
+        write_eco="n"
     fi
-    
-    if [ "$write_eco" = "y" ]; then
-        cat <<EOF > "$ECO_FILE"
+fi
+
+if [ "$write_eco" = "y" ]; then
+    cat <<EOF > "$ECO_FILE"
 module.exports = {
   apps: [
     {
@@ -230,11 +201,10 @@ module.exports = {
   ]
 };
 EOF
-        chown deployer:deployer "$ECO_FILE"
-        echo -e "${TICK} Đã tạo tệp cấu hình PM2 Cluster Mode thành công."
-    else
-        echo -e "${TICK} Giữ nguyên tệp cấu hình PM2 hiện tại."
-    fi
+    chown deployer:deployer "$ECO_FILE"
+    echo -e "${TICK} Đã tạo tệp cấu hình PM2 Cluster Mode thành công."
+else
+    echo -e "${TICK} Giữ nguyên tệp cấu hình PM2 hiện tại."
 fi
 
 # ==============================================================================
@@ -298,7 +268,7 @@ else
 fi
 
 # ==============================================================================
-# BƯỚC 6: SINH FILE CẤU HÌNH GITLAB CI/CD DỰA TRÊN BRANCH & STAGES ĐỘNG
+# BƯỚC 6: SINH FILE CẤU HÌNH GITLAB CI/CD ĐA CHI NHÁNH ĐỘNG
 # ==============================================================================
 echo -e "\n${BOLD}${WHITE}==> Bước 6: Cấu hình GitLab CI/CD Pipeline động theo chi nhánh (Branches)${NC}"
 
@@ -332,9 +302,9 @@ if [ "$write_ci" = "y" ]; then
     # Bắt đầu dựng nội dung tệp tin .gitlab-ci.yml
     cat <<EOF > "$CI_FILE"
 # ==============================================================================
-# GitLab CI/CD Pipeline - Auto-Generated by Star-Bash Suite
+# GitLab CI/CD Pipeline for Next.js - Auto-Generated by Star-Bash Suite
 # Project: ${domain}
-# Type: ${project_type}
+# Type: Frontend (Next.js / PM2)
 # Method: Dynamic Multi-branch optimized pipeline
 # ==============================================================================
 
@@ -371,8 +341,7 @@ EOF
         done
         
         # Ghi Job Build vào tệp tin
-        if [ "$project_type" = "FE" ]; then
-            cat <<EOF >> "$CI_FILE"
+        cat <<EOF >> "$CI_FILE"
 
 # --- BUILD JOB CHO CHI NHÁNH: ${br} ---
 build-${br}:
@@ -400,31 +369,6 @@ build-${br}:
       - ecosystem.config.js
       - .env.local
 EOF
-        else
-            # Đối với BE (Chạy bằng Docker)
-            cat <<EOF >> "$CI_FILE"
-
-# --- BUILD JOB CHO CHI NHÁNH (BE - Docker): ${br} ---
-build-${br}:
-  stage: build
-  image: node:20-alpine
-  rules:
-    - if: \$CI_COMMIT_BRANCH == "${br}"
-  variables:
-    ENV_FILE: \$ENV_LOCAL_${br_upper}
-  script:
-    - echo "==> Khởi tạo môi trường cho chi nhánh ${br}..."
-    - cp "\$ENV_FILE" .env.local
-  artifacts:
-    name: "${br}-build-\$CI_COMMIT_REF_SLUG"
-    expire_in: 3 days
-    paths:
-      - ./
-    exclude:
-      - node_modules/**/*
-      - .git/**/*
-EOF
-        fi
 
         # Nếu chọn Build & Deploy, ghi thêm Job Deploy vào tệp tin
         if [ "$mode_choice" = "2" ]; then
@@ -442,8 +386,7 @@ EOF
             chown -R deployer:deployer "${deploy_dir}"
             chmod 755 "${deploy_dir}"
             
-            if [ "$project_type" = "FE" ]; then
-                cat <<EOF >> "$CI_FILE"
+            cat <<EOF >> "$CI_FILE"
 
 # --- DEPLOY JOB CHO CHI NHÁNH: ${br} ---
 deploy-${br}:
@@ -477,42 +420,6 @@ deploy-${br}:
       "
     - echo "✅ Deploy thành công lên thư mục ${deploy_dir}."
 EOF
-            else
-                # Đối với BE (Chạy bằng Docker)
-                cat <<EOF >> "$CI_FILE"
-
-# --- DEPLOY JOB CHO CHI NHÁNH (BE - Docker): ${br} ---
-deploy-${br}:
-  stage: deploy
-  image: alpine:latest
-  rules:
-    - if: \$CI_COMMIT_BRANCH == "${br}"
-  dependencies:
-    - build-${br}
-  before_script:
-    - apk add --no-cache openssh-client tar
-    - mkdir -p ~/.ssh
-    - eval \$(ssh-agent -s)
-    - echo "\$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-  script:
-    - echo "==> Bắt đầu đóng gói mã nguồn..."
-    - tar --exclude=build.tar.gz -czf build.tar.gz .
-    
-    - echo "==> Đang tải gói nguồn lên thư mục deploy trên VPS..."
-    - scp build.tar.gz deployer@\$VPS_IP:${deploy_dir}/
-    
-    - echo "==> Giải nén và khởi động dịch vụ qua Docker Compose..."
-    - ssh deployer@\$VPS_IP "
-        cd ${deploy_dir}/ &&
-        tar -xzf build.tar.gz &&
-        rm -f build.tar.gz &&
-        export PATH=\\\$PATH:/usr/bin:/usr/local/bin &&
-        docker compose up --build -d
-      "
-    - echo "✅ Deploy thành công lên Docker trên VPS."
-EOF
-            fi
         fi
     done
 
@@ -531,20 +438,16 @@ chmod -R 755 "$APP_PATH"
 echo -e "${TICK} Toàn bộ quyền sở hữu thư mục dự án đã chuyển giao cho user ${BOLD}deployer${NC}."
 
 echo -e "\n${BOLD}${GREEN}========================================================================${NC}"
-echo -e "       🎉 THIẾT LẬP THÀNH CÔNG DỰ ÁN MỚI: ${domain} 🎉"
-echo -e "${BOLD}${GREEN}========================================================================${NC}"
+echo -e "       🎉 THIẾT LẬP THÀNH CÔNG DỰ ÁN FRONTEND: ${domain} 🎉"
+echo -e "========================================================================${NC}"
 echo -e " 1. Thư mục chạy dự án  : ${BOLD}${APP_PATH}${NC}"
 echo -e " 2. Cổng dịch vụ        : ${BOLD}${port}${NC}"
 echo -e " 3. Tên miền truy cập   : ${GREEN}https://${domain}${NC} (Đã kích hoạt SSL)"
-echo -e " 4. PM2 Config          : ${BOLD}${APP_PATH}/ecosystem.config.js${NC} (Chỉ có ở FE)"
+echo -e " 4. PM2 Config          : ${BOLD}${APP_PATH}/ecosystem.config.js${NC}"
 echo -e " 5. GitLab CI Config    : ${BOLD}${APP_PATH}/.gitlab-ci.yml${NC}"
 echo -e ""
 echo -e " 👉 LƯU Ý KHI CHẠY DỰ ÁN LẦN ĐẦU TIÊN:"
 echo -e "    Hãy chạy các lệnh sau dưới quyền deployer để ứng dụng được khởi chạy ban đầu:"
 echo -e "    ${BOLD}su - deployer${NC}"
-if [ "$project_type" = "FE" ]; then
-    echo -e "    ${BOLD}cd ${APP_PATH} && pm2 start ecosystem.config.js && pm2 save${NC}"
-else
-    echo -e "    ${BOLD}cd ${APP_PATH} && pm2 start <file_chạy_BE.js> --name \"${domain}\" && pm2 save${NC}"
-fi
+echo -e "    ${BOLD}cd ${APP_PATH} && pm2 start ecosystem.config.js && pm2 save${NC}"
 echo -e "${BOLD}${GREEN}========================================================================${NC}\n"

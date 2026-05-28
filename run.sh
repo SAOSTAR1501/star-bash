@@ -254,18 +254,16 @@ show_guidelines() {
     echo -e "          - Runner chạy chế độ bảo mật không root (user gitlab-runner)."
     echo -e ""
     
-    echo -e "${BOLD}${WHITE}2. QUY TRÌNH KHỞI TẠO MỘT DỰ ÁN MỚI (FE/BE)${NC}"
-    echo -e "   Khi muốn đưa một website mới chạy live trên VPS:"
-    echo -e "   👉 ${BOLD}Bước 1:${NC} Chạy mục ${BOLD}[5]${NC} (FE/BE Orchestrator)."
-    echo -e "          - Nhập tên miền (domain) làm tên thư mục (Ví dụ: newapp.vn)."
-    echo -e "          - Nhập Git URL dạng: gitlab-local:vitechgroup/repo.git."
-    echo -e "          - Nhập loại dự án FE/BE và cổng chạy (Ví dụ: 3005)."
-    echo -e "          - Script tự động clone bằng user deployer, sinh config PM2 (cho FE),"
-    echo -e "            tạo cấu hình Nginx Reverse Proxy, kích hoạt site và đăng ký SSL Certbot HTTPS."
-    echo -e "   👉 ${BOLD}Bước 2:${NC} Đăng nhập vào user deployer: ${BOLD}su - deployer${NC}"
-    echo -e "   👉 ${BOLD}Bước 3:${NC} Di chuyển vào thư mục dự án và chạy ứng dụng lần đầu bằng PM2:"
-    echo -e "          - Đối với FE: ${BOLD}cd /home/newapp.vn && pm2 start ecosystem.config.js && pm2 save${NC}"
-    echo -e "          - Đối với BE: ${BOLD}cd /home/newapp.vn && pm2 start app.js --name \"newapp.vn\" && pm2 save${NC}"
+    echo -e "${BOLD}${WHITE}2. QUY TRÌNH KHỞI TẠO DỰ ÁN MỚI (FRONTEND VÀ BACKEND ĐỘC LẬP)${NC}"
+    echo -e "   Khi muốn đưa một ứng dụng mới chạy live trên VPS:"
+    echo -e "   👉 ${BOLD}Dành cho Frontend (Next.js / PM2):${NC} Chạy mục ${BOLD}[5]${NC}"
+    echo -e "          - Nhập tên miền (Ví dụ: nextapp.vn), Git Remote URL, Cổng chạy Node.js (Ví dụ: 3000)."
+    echo -e "          - Script tự động clone, tạo PM2 Cluster Mode, tạo Nginx site và đăng ký SSL Certbot."
+    echo -e "          - Chạy ban đầu: ${BOLD}su - deployer && cd /home/nextapp.vn && pm2 start ecosystem.config.js && pm2 save${NC}"
+    echo -e "   👉 ${BOLD}Dành cho Backend (Docker / Docker Compose):${NC} Chạy mục ${BOLD}[9]${NC}"
+    echo -e "          - Nhập tên miền (Ví dụ: api.vitech.vn), Git Remote URL, Cổng host, Lệnh Docker đặc thù."
+    echo -e "          - Script tự động clone, cấp nhóm Docker cho deployer, tạo deploy.sh, tạo Nginx proxy, đăng ký SSL."
+    echo -e "          - Chạy ban đầu: ${BOLD}su - deployer && cd /home/api.vitech.vn && bash deploy.sh${NC}"
     echo -e ""
     
     echo -e "${BOLD}${WHITE}3. QUY TRÌNH ĐỂ THIẾT LẬP TỰ ĐỘNG HÓA CI/CD LÊN GITLAB${NC}"
@@ -299,7 +297,7 @@ main_menu() {
         echo -e " [4] ⚙️  ${BOLD}VPS Server Setup & Resource Monitor Suite${NC}"
         echo -e "      (Cài đặt công cụ VPS và giám sát tài nguyên VPS tự động)"
         echo -e ""
-        echo -e " [5] 🚀 ${BOLD}Khởi tạo dự án mới hoàn toàn (FE/BE Orchestrator)${NC} ${GREEN}[KHUYÊN DÙNG]${NC}"
+        echo -e " [5] 🚀 ${BOLD}Khởi tạo dự án Frontend mới (Next.js / PM2 Cluster)${NC}"
         echo -e "      (Tự động Clone, sinh PM2 Cluster, tạo Nginx site, cài SSL và sinh GitLab CI/CD)"
         echo -e ""
         echo -e " [6] 🔑 ${BOLD}Tạo user deployer và SSH Key bảo mật${NC} ${REC_DEPLOYER}"
@@ -311,11 +309,14 @@ main_menu() {
         echo -e " [8] 🦊 ${BOLD}Cấu hình kết nối Cloudflare WARP & GitLab Local${NC} ${REC_WARP}"
         echo -e "      (Cài đặt WARP, liên kết Zero Trust Team, test định tuyến và cấu hình alias SSH)"
         echo -e ""
+        echo -e " [9] 🐳 ${BOLD}Khởi tạo dự án Backend mới (Docker / Compose)${NC} ${GREEN}[KHUYÊN DÙNG]${NC}"
+        echo -e "      (Tự động Clone, nạp nhóm Docker cho deployer, cấu hình Nginx proxy, SSL và sinh CI/CD)"
+        echo -e ""
         echo -e " [00] 📖 ${BOLD}Hướng dẫn quy trình chuẩn (Guidelines)${NC}"
         echo -e ""
         echo -e " [0] 🚪 ${BOLD}Thoát chương trình${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-8 hoặc 00]: " choice
+        read -p "Nhập lựa chọn của bạn [0-9 hoặc 00]: " choice
 
         case "$choice" in
             00)
@@ -346,10 +347,10 @@ main_menu() {
                 run_setup_monitor_menu
                 ;;
             5)
-                if [ -f "$SCRIPT_DIR/setup/orchestrate_new_project.sh" ]; then
-                    bash "$SCRIPT_DIR/setup/orchestrate_new_project.sh"
+                if [ -f "$SCRIPT_DIR/setup/orchestrate_fe_project.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/orchestrate_fe_project.sh"
                 else
-                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/orchestrate_new_project.sh"
+                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/orchestrate_fe_project.sh"
                 fi
                 ;;
             6)
@@ -373,12 +374,19 @@ main_menu() {
                     echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/setup_warp_gitlab.sh"
                 fi
                 ;;
+            9)
+                if [ -f "$SCRIPT_DIR/setup/orchestrate_be_project.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/orchestrate_be_project.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/orchestrate_be_project.sh"
+                fi
+                ;;
             0)
                 echo -e "\n${BOLD}${GREEN}Cảm ơn bạn đã sử dụng Star-Bash Suite. Hẹn gặp lại!${NC}\n"
                 exit 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 8 hoặc 00."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 9 hoặc 00."
                 ;;
         esac
         
