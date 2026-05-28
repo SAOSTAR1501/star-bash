@@ -100,9 +100,12 @@ run_setup_monitor_menu() {
         echo -e " [6] 🔑 ${BOLD}VPS Deployer & SSH Setup for Next.js (setup_vps_deployer.sh)${NC}"
         echo -e "      (Cài đặt deployer user & SSH Key bảo mật cao cho CI/CD)"
         echo -e ""
+        echo -e " [7] 🦊 ${BOLD}Auto-generate GitLab CI/CD & PM2 (gen_gitlab_ci.sh)${NC}"
+        echo -e "      (Tự động tạo tệp .gitlab-ci.yml và ecosystem.config.js riêng cho từng dự án)"
+        echo -e ""
         echo -e " [0] 🔙 ${BOLD}Quay lại Menu chính${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-6]: " choice
+        read -p "Nhập lựa chọn của bạn [0-7]: " choice
 
         case "$choice" in
             1)
@@ -147,11 +150,18 @@ run_setup_monitor_menu() {
                     echo -e "${CROSS} Không tìm thấy file script vps-deployer tại $SCRIPT_DIR/setup/setup_vps_deployer.sh"
                 fi
                 ;;
+            7)
+                if [ -f "$SCRIPT_DIR/setup/gen_gitlab_ci.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/gen_gitlab_ci.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script gen-gitlab-ci tại $SCRIPT_DIR/setup/gen_gitlab_ci.sh"
+                fi
+                ;;
             0)
                 return 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 6."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 7."
                 ;;
         esac
         echo -e "\n${INFO} Nhấn Enter để quay lại Menu công cụ..."
