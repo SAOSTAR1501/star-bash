@@ -89,8 +89,19 @@ done
 ECO_FILE="${APP_PATH}/ecosystem.config.js"
 echo -e "\n${BOLD}${WHITE}==> 1. Thiết lập tệp tin cấu hình PM2 (ecosystem.config.js)${NC}"
 
-# Tạo config ecosystem.config.js mẫu tối ưu Cluster Mode
-cat << EOF > "$ECO_FILE"
+write_eco="y"
+if [ -f "$ECO_FILE" ]; then
+    echo -e "${WARN} Phát hiện tệp tin ${BOLD}ecosystem.config.js${NC} đã tồn tại sẵn trong dự án."
+    read -p "❓ Bạn có muốn ghi đè bằng cấu hình Cluster Mode tối ưu mới không? (y/N): " overwrite_eco
+    overwrite_eco=${overwrite_eco:-"n"}
+    if [[ ! "$overwrite_eco" =~ ^[yY] ]]; then
+        write_eco="n"
+    fi
+fi
+
+if [ "$write_eco" = "y" ]; then
+    # Tạo config ecosystem.config.js mẫu tối ưu Cluster Mode
+    cat << EOF > "$ECO_FILE"
 module.exports = {
   apps: [
     {
@@ -109,10 +120,13 @@ module.exports = {
   ]
 };
 EOF
+    echo -e "${TICK} Đã sinh cấu hình PM2 Cluster Mode thành công tại: ${BOLD}${ECO_FILE}${NC}"
+else
+    echo -e "${TICK} Giữ nguyên tệp cấu hình ${BOLD}ecosystem.config.js${NC} hiện tại của bạn."
+fi
 
 # Phân quyền cho deployer sở hữu
 chown deployer:deployer "$ECO_FILE"
-echo -e "${TICK} Đã sinh cấu hình PM2 Cluster Mode thành công tại: ${BOLD}${ECO_FILE}${NC}"
 
 # ==============================================================================
 # 2. SINH CẤU HÌNH .GITLAB-CI.YML BẢO MẬT TỐI ƯU
