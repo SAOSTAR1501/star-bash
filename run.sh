@@ -94,44 +94,54 @@ run_setup_monitor_menu() {
         echo -e " [4] 🔔 ${BOLD}Run Instant Resource Check & Test Alert${NC}"
         echo -e "      (Kiểm tra nhanh tài nguyên một lần & test gửi cảnh báo)"
         echo -e ""
+        echo -e " [5] 🦊 ${BOLD}GitLab Runner Secure Installer (setup_gitlab_runner.sh)${NC}"
+        echo -e "      (Cài đặt và thiết lập GitLab Runner Non-Root, Sandbox an toàn)"
+        echo -e ""
         echo -e " [0] 🔙 ${BOLD}Quay lại Menu chính${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-4]: " choice
+        read -p "Nhập lựa chọn của bạn [0-5]: " choice
 
         case "$choice" in
             1)
-                if [ -f "$SCRIPT_DIR/setup-server/setup.sh" ]; then
-                    bash "$SCRIPT_DIR/setup-server/setup.sh"
+                if [ -f "$SCRIPT_DIR/setup/setup.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/setup.sh"
                 else
-                    echo -e "${CROSS} Không tìm thấy file script setup tại $SCRIPT_DIR/setup-server/setup.sh"
+                    echo -e "${CROSS} Không tìm thấy file script setup tại $SCRIPT_DIR/setup/setup.sh"
                 fi
                 ;;
             2)
-                if [ -f "$SCRIPT_DIR/setup-server/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/setup-server/sys_monitor.sh" dashboard
+                if [ -f "$SCRIPT_DIR/setup/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/sys_monitor.sh" dashboard
                 else
-                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup-server/sys_monitor.sh"
+                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup/sys_monitor.sh"
                 fi
                 ;;
             3)
-                if [ -f "$SCRIPT_DIR/setup-server/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/setup-server/sys_monitor.sh" config
+                if [ -f "$SCRIPT_DIR/setup/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/sys_monitor.sh" config
                 else
-                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup-server/sys_monitor.sh"
+                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup/sys_monitor.sh"
                 fi
                 ;;
             4)
-                if [ -f "$SCRIPT_DIR/setup-server/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/setup-server/sys_monitor.sh" check
+                if [ -f "$SCRIPT_DIR/setup/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/sys_monitor.sh" check
                 else
-                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup-server/sys_monitor.sh"
+                    echo -e "${CROSS} Không tìm thấy file script monitor tại $SCRIPT_DIR/setup/sys_monitor.sh"
+                fi
+                ;;
+            5)
+                if [ -f "$SCRIPT_DIR/setup/setup_gitlab_runner.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/setup_gitlab_runner.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script gitlab-runner tại $SCRIPT_DIR/setup/setup_gitlab_runner.sh"
                 fi
                 ;;
             0)
                 return 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 4."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 5."
                 ;;
         esac
         echo -e "\n${INFO} Nhấn Enter để quay lại Menu công cụ..."
