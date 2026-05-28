@@ -33,8 +33,45 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+WARP_RECOMMEND=""
+check_warp_status() {
+    # Check if warp-cli is installed
+    if ! command -v warp-cli &>/dev/null; then
+        WARP_RECOMMEND="${RED}[Chưa cài WARP - Hãy chạy mục [8]]${NC}"
+        return
+    fi
+
+    # Check registration
+    local reg_show
+    reg_show=$(warp-cli registration show 2>/dev/null || echo "Missing registration")
+    if ! echo "$reg_show" | grep -q "Account type: Team"; then
+        WARP_RECOMMEND="${RED}[WARP Chưa Liên Kết Zero Trust - Hãy chạy mục [8]]${NC}"
+        return
+    fi
+
+    # Check connection
+    local status_show
+    status_show=$(warp-cli status 2>/dev/null | grep -i "status" || echo "")
+    if ! echo "$status_show" | grep -q "Connected"; then
+        WARP_RECOMMEND="${YELLOW}[WARP Chưa Kết Nối - Hãy chạy mục [8]]${NC}"
+        return
+    fi
+
+    # Check SSH to gitlab-local
+    if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o BatchMode=yes -T gitlab-local 2>&1 | grep -q "Welcome to GitLab"; then
+        WARP_RECOMMEND="${GREEN}[Connected & SSH OK]${NC}"
+    else
+        if nc -vz -w 2 192.168.1.138 2222 &>/dev/null; then
+            WARP_RECOMMEND="${YELLOW}[WARP Connected, SSH Keys Chưa Add - Hãy chạy mục [8]]${NC}"
+        else
+            WARP_RECOMMEND="${RED}[WARP Connected Nhưng Mạng Lỗi]${NC}"
+        fi
+    fi
+}
+
 show_banner() {
     clear
+    check_warp_status
     echo -e "${BOLD}${CYAN}"
     echo "========================================================================"
     echo "    🌟 STAR-BASH VPS ORCHESTRATOR & DEPLOYMENT HUB 🌟                 "
@@ -43,6 +80,7 @@ show_banner() {
     echo -e "${BOLD}${WHITE}Hệ điều hành :${NC} $(lsb_release -d 2>/dev/null | cut -f2 || cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2 || echo "Linux")"
     echo -e "${BOLD}${WHITE}Uptime       :${NC} $(uptime -p)"
     echo -e "${BOLD}${WHITE}Thư mục gốc  :${NC} ${SCRIPT_DIR}"
+    echo -e "${BOLD}${WHITE}Kết nối WARP :${NC} ${WARP_RECOMMEND}"
     echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
 }
 
@@ -186,9 +224,15 @@ main_menu() {
         echo -e " [4] ⚙️  ${BOLD}VPS Server Setup & Resource Monitor Suite${NC}"
         echo -e "      (Cài đặt công cụ VPS và giám sát tài nguyên VPS tự động)"
         echo -e ""
+        echo -e " [5] 🚀 ${BOLD}Khởi tạo dự án mới hoàn toàn (FE/BE Orchestrator)${NC} ${GREEN}[KHUYÊN DÙNG]${NC}"
+        echo -e "      (Tự động Clone, sinh PM2 Cluster, tạo Nginx site, cài SSL và sinh GitLab CI/CD)"
+        echo -e ""
+        echo -e " [8] 🦊 ${BOLD}Cấu hình kết nối Cloudflare WARP & GitLab Local${NC}"
+        echo -e "      (Cài đặt WARP, liên kết Zero Trust Team, test định tuyến và sinh SSH Keys bảo mật)"
+        echo -e ""
         echo -e " [0] 🚪 ${BOLD}Thoát chương trình${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-4]: " choice
+        read -p "Nhập lựa chọn của bạn [0-8]: " choice
 
         case "$choice" in
             1)
@@ -215,12 +259,26 @@ main_menu() {
             4)
                 run_setup_monitor_menu
                 ;;
+            5)
+                if [ -f "$SCRIPT_DIR/setup/orchestrate_new_project.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/orchestrate_new_project.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/orchestrate_new_project.sh"
+                fi
+                ;;
+            8)
+                if [ -f "$SCRIPT_DIR/setup/setup_warp_gitlab.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/setup_warp_gitlab.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/setup_warp_gitlab.sh"
+                fi
+                ;;
             0)
                 echo -e "\n${BOLD}${GREEN}Cảm ơn bạn đã sử dụng Star-Bash Suite. Hẹn gặp lại!${NC}\n"
                 exit 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 4."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 8."
                 ;;
         esac
         
