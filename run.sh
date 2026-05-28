@@ -236,6 +236,52 @@ run_setup_monitor_menu() {
     done
 }
 
+show_guidelines() {
+    clear
+    echo -e "${BOLD}${CYAN}========================================================================${NC}"
+    echo -e "       📖 CẨM NANG HƯỚNG DẪN QUY TRÌNH CHUẨN - STAR-BASH SUITE 📖       "
+    echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
+    
+    echo -e "${BOLD}${WHITE}1. QUY TRÌNH THIẾT LẬP SERVER MỚI (CHỈ LÀM 1 LẦN BAN ĐẦU)${NC}"
+    echo -e "   Để setup một VPS mới có thể lấy code từ GitLab local qua WARP:"
+    echo -e "   👉 ${BOLD}Bước A:${NC} Chạy mục ${BOLD}[8]${NC} để cài đặt Cloudflare WARP client."
+    echo -e "          - Đăng nhập Zero Trust Team (mktsoftware) bằng link hiển thị."
+    echo -e "          - Nạp token thủ công nếu chạy trên VPS headless."
+    echo -e "          - Sao chép khóa SSH Public Key hiển thị trên màn hình và dán vào GitLab UI."
+    echo -e "   👉 ${BOLD}Bước B:${NC} Chạy mục ${BOLD}[6]${NC} để tạo user ${BOLD}deployer${NC} hạn chế quyền."
+    echo -e "          - User này dùng để chạy PM2 và nhận code an toàn."
+    echo -e "   👉 ${BOLD}Bước C:${NC} Chạy mục ${BOLD}[7]${NC} để cài đặt & đăng ký ${BOLD}GitLab Runner${NC}."
+    echo -e "          - Runner chạy chế độ bảo mật không root (user gitlab-runner)."
+    echo -e ""
+    
+    echo -e "${BOLD}${WHITE}2. QUY TRÌNH KHỞI TẠO MỘT DỰ ÁN MỚI (FE/BE)${NC}"
+    echo -e "   Khi muốn đưa một website mới chạy live trên VPS:"
+    echo -e "   👉 ${BOLD}Bước 1:${NC} Chạy mục ${BOLD}[5]${NC} (FE/BE Orchestrator)."
+    echo -e "          - Nhập tên miền (domain) làm tên thư mục (Ví dụ: newapp.vn)."
+    echo -e "          - Nhập Git URL dạng: gitlab-local:vitechgroup/repo.git."
+    echo -e "          - Nhập loại dự án FE/BE và cổng chạy (Ví dụ: 3005)."
+    echo -e "          - Script tự động clone bằng user deployer, sinh config PM2 (cho FE),"
+    echo -e "            tạo cấu hình Nginx Reverse Proxy, kích hoạt site và đăng ký SSL Certbot HTTPS."
+    echo -e "   👉 ${BOLD}Bước 2:${NC} Đăng nhập vào user deployer: ${BOLD}su - deployer${NC}"
+    echo -e "   👉 ${BOLD}Bước 3:${NC} Di chuyển vào thư mục dự án và chạy ứng dụng lần đầu bằng PM2:"
+    echo -e "          - Đối với FE: ${BOLD}cd /home/newapp.vn && pm2 start ecosystem.config.js && pm2 save${NC}"
+    echo -e "          - Đối với BE: ${BOLD}cd /home/newapp.vn && pm2 start app.js --name \"newapp.vn\" && pm2 save${NC}"
+    echo -e ""
+    
+    echo -e "${BOLD}${WHITE}3. QUY TRÌNH ĐỂ THIẾT LẬP TỰ ĐỘNG HÓA CI/CD LÊN GITLAB${NC}"
+    echo -e "   Để mỗi lần push code lên develop/main tự động build và deploy lên VPS:"
+    echo -e "   👉 ${BOLD}Bước 1:${NC} Vào GitLab Repository -> Settings -> CI/CD -> Variables."
+    echo -e "   👉 ${BOLD}Bước 2:${NC} Nạp 4 biến môi trường cốt lõi:"
+    echo -e "          - ${BOLD}VPS_IP${NC} (Variable): IP của VPS này."
+    echo -e "          - ${BOLD}SSH_PRIVATE_KEY${NC} (Variable): Khóa Private Key của user deployer."
+    echo -e "          - ${BOLD}ENV_LOCAL_STAGING${NC} (File): Nội dung tệp .env.local môi trường develop."
+    echo -e "          - ${BOLD}ENV_LOCAL_PRODUCTION${NC} (File): Nội dung tệp .env.local môi trường main."
+    echo -e "   👉 ${BOLD}Bước 3:${NC} Commit file ${BOLD}.gitlab-ci.yml${NC} (đã sinh tự động ở mục [5]) lên repo."
+    echo -e "          - Mỗi lần bạn push code, GitLab Runner sẽ tự động biên dịch và cập nhật lên VPS live."
+    echo -e ""
+    echo -e "${BOLD}${CYAN}========================================================================${NC}"
+}
+
 main_menu() {
     local choice
     while true; do
@@ -265,11 +311,16 @@ main_menu() {
         echo -e " [8] 🦊 ${BOLD}Cấu hình kết nối Cloudflare WARP & GitLab Local${NC} ${REC_WARP}"
         echo -e "      (Cài đặt WARP, liên kết Zero Trust Team, test định tuyến và cấu hình alias SSH)"
         echo -e ""
+        echo -e " [00] 📖 ${BOLD}Hướng dẫn quy trình chuẩn (Guidelines)${NC}"
+        echo -e ""
         echo -e " [0] 🚪 ${BOLD}Thoát chương trình${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-8]: " choice
+        read -p "Nhập lựa chọn của bạn [0-8 hoặc 00]: " choice
 
         case "$choice" in
+            00)
+                show_guidelines
+                ;;
             1)
                 if [ -f "$SCRIPT_DIR/security/security_check.sh" ]; then
                     bash "$SCRIPT_DIR/security/security_check.sh"
@@ -327,7 +378,7 @@ main_menu() {
                 exit 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 8."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 8 hoặc 00."
                 ;;
         esac
         
