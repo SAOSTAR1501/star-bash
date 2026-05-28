@@ -200,7 +200,7 @@ cat <<EOF > "$NGINX_CONF"
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN};
 
     location / {
         proxy_pass http://127.0.0.1:${PORT};
@@ -233,16 +233,11 @@ fi
 if [ "$ACTIVATE_SSL" = "yes" ]; then
     echo -e "${INFO} Đang kiểm tra Certbot để cấp chứng chỉ SSL..."
     if command -v certbot &>/dev/null; then
-        echo -e "${INFO} Đang xin cấp chứng chỉ bảo mật cho ${DOMAIN} và www.${DOMAIN}..."
-        if certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
-            echo -e "${TICK} ${GREEN}Đã cấu hình SSL thành công và tự động chuyển hướng sang HTTPS!${NC}"
+        echo -e "${INFO} Đang xin cấp chứng chỉ bảo mật cho ${DOMAIN}..."
+        if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
+            echo -e "${TICK} ${GREEN}Đã cấu hình SSL cho ${DOMAIN} thành công!${NC}"
         else
-            echo -e "${WARN} Lỗi cấp SSL cho www subdomain. Đang thử cấp riêng cho ${DOMAIN}..."
-            if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
-                echo -e "${TICK} ${GREEN}Đã cấu hình SSL cho ${DOMAIN} thành công!${NC}"
-            else
-                echo -e "${CROSS} ${RED}Gặp lỗi khi tạo chứng chỉ SSL. Hãy đảm bảo tên miền đã được trỏ IP về VPS này.${NC}"
-            fi
+            echo -e "${CROSS} ${RED}Gặp lỗi khi tạo chứng chỉ SSL. Hãy đảm bảo tên miền đã được trỏ IP về VPS này.${NC}"
         fi
     else
         echo -e "${WARN} Không tìm thấy 'certbot'! Bỏ qua bước cấp SSL."

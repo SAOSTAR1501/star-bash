@@ -219,7 +219,7 @@ cat <<EOF > "$NGINX_CONF"
 server {
     listen 80;
     listen [::]:80;
-    server_name ${domain} www.${domain};
+    server_name ${domain};
 
     access_log /var/log/nginx/${domain}.access.log;
     error_log /var/log/nginx/${domain}.error.log;
@@ -253,15 +253,10 @@ fi
 # Đăng ký SSL Certbot
 if command -v certbot &>/dev/null; then
     echo -e "${INFO} Đang chạy Certbot tự động cấu hình SSL HTTPS..."
-    if certbot --nginx -d "$domain" -d "www.$domain" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
-        echo -e "${TICK} SSL đã được cài đặt thành công cho cả ${domain} & www.${domain}."
+    if certbot --nginx -d "$domain" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
+        echo -e "${TICK} SSL đã được cài đặt thành công cho ${domain}."
     else
-        echo -e "${WARN} Lỗi cấp SSL cho subdomain 'www'. Tiến hành cấp cho tên miền gốc..."
-        if certbot --nginx -d "$domain" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
-            echo -e "${TICK} SSL đã được cài đặt thành công cho riêng ${domain}."
-        else
-            echo -e "${CROSS} Certbot cấp SSL thất bại. Hãy chắc chắn bạn đã cấu hình DNS trỏ về IP của VPS."
-        fi
+        echo -e "${CROSS} Certbot cấp SSL thất bại. Hãy chắc chắn bạn đã cấu hình DNS trỏ về IP của VPS."
     fi
 else
     echo -e "${WARN} Không tìm thấy Certbot trên VPS. Bỏ qua bước thiết lập SSL HTTPS tự động."

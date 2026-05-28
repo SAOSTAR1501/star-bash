@@ -92,7 +92,7 @@ cat <<EOF > "$NGINX_CONF"
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name ${DOMAIN};
 
     location / {
         proxy_pass http://127.0.0.1:${PORT};
@@ -124,18 +124,13 @@ fi
 # 4. Get SSL Certificate using Certbot
 echo -e "${INFO} Checking Certbot for SSL Certificate installation..."
 if command -v certbot &>/dev/null; then
-    echo -e "${INFO} Running Certbot to generate and configure SSL for ${DOMAIN} & www.${DOMAIN}..."
+    echo -e "${INFO} Running Certbot to generate and configure SSL for ${DOMAIN}..."
     
     # Run certbot non-interactively
-    if certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
+    if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
         echo -e "${TICK} ${GREEN}SSL certificate successfully configured with auto-redirect to HTTPS!${NC}"
     else
-        echo -e "${WARN} Certbot failed to generate SSL. Trying without www subdomain..."
-        if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
-            echo -e "${TICK} ${GREEN}SSL certificate successfully configured for ${DOMAIN} only!${NC}"
-        else
-            echo -e "${CROSS} ${RED}Certbot failed. Please verify DNS records are pointing to this server's IP.${NC}"
-        fi
+        echo -e "${CROSS} ${RED}Certbot failed. Please verify DNS records are pointing to this server's IP.${NC}"
     fi
 else
     echo -e "${WARN} 'certbot' command not found! Skipping SSL certificate generation."
