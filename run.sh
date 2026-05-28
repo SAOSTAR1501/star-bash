@@ -97,9 +97,12 @@ run_setup_monitor_menu() {
         echo -e " [5] 🦊 ${BOLD}GitLab Runner Secure Installer (setup_gitlab_runner.sh)${NC}"
         echo -e "      (Cài đặt và thiết lập GitLab Runner Non-Root, Sandbox an toàn)"
         echo -e ""
+        echo -e " [6] 🔑 ${BOLD}VPS Deployer & SSH Setup for Next.js (setup_vps_deployer.sh)${NC}"
+        echo -e "      (Cài đặt deployer user & SSH Key bảo mật cao cho CI/CD)"
+        echo -e ""
         echo -e " [0] 🔙 ${BOLD}Quay lại Menu chính${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        read -p "Nhập lựa chọn của bạn [0-5]: " choice
+        read -p "Nhập lựa chọn của bạn [0-6]: " choice
 
         case "$choice" in
             1)
@@ -137,11 +140,18 @@ run_setup_monitor_menu() {
                     echo -e "${CROSS} Không tìm thấy file script gitlab-runner tại $SCRIPT_DIR/setup/setup_gitlab_runner.sh"
                 fi
                 ;;
+            6)
+                if [ -f "$SCRIPT_DIR/setup/setup_vps_deployer.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/setup_vps_deployer.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script vps-deployer tại $SCRIPT_DIR/setup/setup_vps_deployer.sh"
+                fi
+                ;;
             0)
                 return 0
                 ;;
             *)
-                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 5."
+                echo -e "${CROSS} Lựa chọn không hợp lệ. Vui lòng nhập từ 0 đến 6."
                 ;;
         esac
         echo -e "\n${INFO} Nhấn Enter để quay lại Menu công cụ..."
