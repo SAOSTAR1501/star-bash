@@ -5,36 +5,100 @@
 # ==============================================================================
 
 stages:
+  - build
   - deploy
 
+default:
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+
 # ==============================================================================
-# DEPLOY STAGES (SSH Non-Root to VPS Host)
+# STAGE 1: BUILD STAGE (Runs on GitLab Runner Sandbox)
+# ==============================================================================
+build-staging:
+  stage: build
+  image: node:20-alpine
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  variables:
+    ENV_FILE: $ENV_LOCAL_STAGING
+  script:
+    - echo "==> Khởi tạo môi trường Staging..."
+    - cp "$ENV_FILE" .env.local
+    - npm install --cache .npm --prefer-offline
+    - npm run build
+    - echo "==> Dọn dẹp cache biên dịch để giảm kích thước tệp nén..."
+    - rm -rf .next/cache
+  artifacts:
+    name: "staging-build-$CI_COMMIT_REF_SLUG"
+    expire_in: 3 days
+    paths:
+      - .next/
+      - public/
+      - package.json
+      - package-lock.json
+      - ecosystem.config.js
+      - .env.local
+
+build-production:
+  stage: build
+  image: node:20-alpine
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    ENV_FILE: $ENV_LOCAL_PRODUCTION
+  script:
+    - echo "==> Khởi tạo môi trường Production..."
+    - cp "$ENV_FILE" .env.local
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+    - echo "==> Dọn dẹp cache biên dịch để giảm kích thước tệp nén..."
+    - rm -rf .next/cache
+  artifacts:
+    name: "production-build-$CI_COMMIT_REF_SLUG"
+    expire_in: 7 days
+    paths:
+      - .next/
+      - public/
+      - package.json
+      - package-lock.json
+      - ecosystem.config.js
+      - .env.local
+
+# ==============================================================================
+# STAGE 2: DEPLOY STAGES (SSH Non-Root to VPS Host)
 # ==============================================================================
 deploy-staging:
   stage: deploy
   image: alpine:latest
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
+  dependencies:
+    - build-staging
   before_script:
-    - apk add --no-cache openssh-client
+    - apk add --no-cache openssh-client tar
     - mkdir -p ~/.ssh
     - eval $(ssh-agent -s)
-    # Nạp SSH Private Key được lưu ở GitLab Variables ($SSH_PRIVATE_KEY)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    # Tắt kiểm tra StrictHostKeyChecking để tránh kẹt tương tác lần đầu
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    - echo "==> Đồng bộ tệp cấu hình .env.local sang VPS..."
-    - scp $ENV_LOCAL_STAGING deployer@$VPS_IP:/var/www/nextjs-app/staging/.env.local
+    - echo "==> Bắt đầu đóng gói tệp tin đã biên dịch..."
+    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
     
-    - echo "==> Thực hiện Git Pull, cài đặt và Build trực tiếp trên VPS..."
+    - echo "==> Đang tải gói build lên thư mục Staging trên VPS..."
+    - scp build.tar.gz deployer@$VPS_IP:/var/www/nextjs-app/staging/
+    
+    - echo "==> Giải nén, cài đặt thư viện production và ra lệnh PM2 khởi động lại..."
     - ssh deployer@$VPS_IP "
         cd /var/www/nextjs-app/staging/ &&
-        git fetch origin develop &&
-        git reset --hard origin/develop &&
+        tar -xzf build.tar.gz &&
+        rm -f build.tar.gz &&
         export PATH=\$PATH:/usr/bin:/usr/local/bin &&
-        npm install --prefer-offline --no-audit &&
-        npm run build &&
+        npm install --omit=dev --prefer-offline --no-audit &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường STAGING thành công!"
@@ -44,24 +108,28 @@ deploy-production:
   image: alpine:latest
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+  dependencies:
+    - build-production
   before_script:
-    - apk add --no-cache openssh-client
+    - apk add --no-cache openssh-client tar
     - mkdir -p ~/.ssh
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    - echo "==> Đồng bộ tệp cấu hình .env.local sang VPS..."
-    - scp $ENV_LOCAL_PRODUCTION deployer@$VPS_IP:/var/www/nextjs-app/production/.env.local
+    - echo "==> Bắt đầu đóng gói tệp tin đã biên dịch..."
+    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
     
-    - echo "==> Thực hiện Git Pull, cài đặt và Build trực tiếp trên VPS..."
+    - echo "==> Đang tải gói build lên thư mục Production trên VPS..."
+    - scp build.tar.gz deployer@$VPS_IP:/var/www/nextjs-app/production/
+    
+    - echo "==> Giải nén, cài đặt thư viện production và ra lệnh PM2 khởi động lại..."
     - ssh deployer@$VPS_IP "
         cd /var/www/nextjs-app/production/ &&
-        git fetch origin main &&
-        git reset --hard origin/main &&
+        tar -xzf build.tar.gz &&
+        rm -f build.tar.gz &&
         export PATH=\$PATH:/usr/bin:/usr/local/bin &&
-        npm install --prefer-offline --no-audit &&
-        npm run build &&
+        npm install --omit=dev --prefer-offline --no-audit &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường PRODUCTION thành công!"
