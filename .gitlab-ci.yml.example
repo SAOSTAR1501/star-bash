@@ -5,89 +5,18 @@
 # ==============================================================================
 
 stages:
-  - build
   - deploy
 
-# Định nghĩa các cấu hình mặc định (cache node_modules để tăng tốc build)
-default:
-  cache:
-    key:
-      files:
-        - package-lock.json
-    paths:
-      - .npm/
-
 # ==============================================================================
-# STAGE 1: BUILD STAGE
-# ==============================================================================
-build-staging:
-  stage: build
-  image: node:20-alpine
-  rules:
-    - if: $CI_COMMIT_BRANCH == "develop"
-  variables:
-    # Next.js yêu cầu có biến môi trường lúc BUILD-TIME để nhúng vào các trang tĩnh (NEXT_PUBLIC_*)
-    # GitLab CI/CD Variable 'ENV_LOCAL_STAGING' phải có Type là 'File' chứa toàn bộ nội dung của file .env.local
-    ENV_FILE: $ENV_LOCAL_STAGING
-  script:
-    - echo "==> Khởi tạo môi trường Staging và nạp cấu hình .env.local..."
-    - cp "$ENV_FILE" .env.local
-    - echo "==> Đang cài đặt thư viện phụ thuộc..."
-    - npm ci --cache .npm --prefer-offline
-    - echo "==> Đang tiến hành build ứng dụng Next.js..."
-    - npm run build
-    # Dọn dẹp devDependencies để giảm nhẹ kích thước truyền tải (chỉ giữ production packages)
-    - npm prune --production
-  artifacts:
-    name: "staging-build-$CI_COMMIT_REF_SLUG"
-    expire_in: 3 days
-    paths:
-      - .next/
-      - public/
-      - package.json
-      - package-lock.json
-      - ecosystem.config.js
-      - .env.local
-
-build-production:
-  stage: build
-  image: node:20-alpine
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-  variables:
-    ENV_FILE: $ENV_LOCAL_PRODUCTION
-  script:
-    - echo "==> Khởi tạo môi trường Production và nạp cấu hình .env.local..."
-    - cp "$ENV_FILE" .env.local
-    - echo "==> Đang cài đặt thư viện phụ thuộc..."
-    - npm ci --cache .npm --prefer-offline
-    - echo "==> Đang tiến hành build ứng dụng Next.js..."
-    - npm run build
-    - npm prune --production
-  artifacts:
-    name: "production-build-$CI_COMMIT_REF_SLUG"
-    expire_in: 7 days
-    paths:
-      - .next/
-      - public/
-      - package.json
-      - package-lock.json
-      - ecosystem.config.js
-      - .env.local
-
-# ==============================================================================
-# STAGE 2: DEPLOY STAGES (SSH NON-ROOT TO VPS)
+# DEPLOY STAGES (SSH Non-Root to VPS Host)
 # ==============================================================================
 deploy-staging:
   stage: deploy
   image: alpine:latest
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
-  dependencies:
-    - build-staging
   before_script:
-    - echo "==> Đang cài đặt SSH Client trên Container..."
-    - apk add --no-cache openssh-client rsync tar
+    - apk add --no-cache openssh-client
     - mkdir -p ~/.ssh
     - eval $(ssh-agent -s)
     # Nạp SSH Private Key được lưu ở GitLab Variables ($SSH_PRIVATE_KEY)
@@ -95,21 +24,17 @@ deploy-staging:
     # Tắt kiểm tra StrictHostKeyChecking để tránh kẹt tương tác lần đầu
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    - echo "==> Bắt đầu nén gói build..."
-    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
+    - echo "==> Đồng bộ tệp cấu hình .env.local sang VPS..."
+    - scp $ENV_LOCAL_STAGING deployer@$VPS_IP:/var/www/nextjs-app/staging/.env.local
     
-    - echo "==> Đang tải gói build lên thư mục Staging trên VPS..."
-    # Đẩy file tar.gz lên VPS bằng user 'deployer' an toàn
-    - scp build.tar.gz deployer@$VPS_IP:/var/www/nextjs-app/staging/
-    
-    - echo "==> Giải nén, cài đặt thư viện production và ra lệnh PM2 khởi động lại ứng dụng..."
+    - echo "==> Thực hiện Git Pull, cài đặt và Build trực tiếp trên VPS..."
     - ssh deployer@$VPS_IP "
         cd /var/www/nextjs-app/staging/ &&
-        tar -xzf build.tar.gz &&
-        rm -f build.tar.gz &&
-        # Nạp biến môi trường cho phiên chạy, cài đặt dependencies và reload dịch vụ Next.js trên PM2
+        git fetch origin develop &&
+        git reset --hard origin/develop &&
         export PATH=\$PATH:/usr/bin:/usr/local/bin &&
-        npm install --omit=dev --prefer-offline --no-audit &&
+        npm install --prefer-offline --no-audit &&
+        npm run build &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường STAGING thành công!"
@@ -119,29 +44,24 @@ deploy-production:
   image: alpine:latest
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  dependencies:
-    - build-production
   before_script:
-    - echo "==> Đang cài đặt SSH Client trên Container..."
-    - apk add --no-cache openssh-client rsync tar
+    - apk add --no-cache openssh-client
     - mkdir -p ~/.ssh
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    - echo "==> Bắt đầu nén gói build..."
-    - tar -czf build.tar.gz .next public package.json package-lock.json ecosystem.config.js .env.local
+    - echo "==> Đồng bộ tệp cấu hình .env.local sang VPS..."
+    - scp $ENV_LOCAL_PRODUCTION deployer@$VPS_IP:/var/www/nextjs-app/production/.env.local
     
-    - echo "==> Đang tải gói build lên thư mục Production trên VPS..."
-    - scp build.tar.gz deployer@$VPS_IP:/var/www/nextjs-app/production/
-    
-    - echo "==> Giải nén, cài đặt thư viện production và ra lệnh PM2 khởi động lại ứng dụng..."
+    - echo "==> Thực hiện Git Pull, cài đặt và Build trực tiếp trên VPS..."
     - ssh deployer@$VPS_IP "
         cd /var/www/nextjs-app/production/ &&
-        tar -xzf build.tar.gz &&
-        rm -f build.tar.gz &&
+        git fetch origin main &&
+        git reset --hard origin/main &&
         export PATH=\$PATH:/usr/bin:/usr/local/bin &&
-        npm install --omit=dev --prefer-offline --no-audit &&
+        npm install --prefer-offline --no-audit &&
+        npm run build &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường PRODUCTION thành công!"
