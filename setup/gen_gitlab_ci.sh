@@ -72,24 +72,9 @@ done
 APP_PATH="/home/${app_choice}"
 echo -e "\n${TICK} Bạn đã chọn dự án: ${BOLD}${app_choice}${NC} (Đường dẫn: ${APP_PATH})"
 
-# Nhập cổng (Port) ứng dụng chạy thực tế
-app_port=""
-while true; do
-    read -p "👉 Nhập cổng chạy Node.js/Next.js của dự án này (Ví dụ: 3000, 3008): " app_port
-    if [[ "$app_port" =~ ^[0-9]+$ ]] && [ "$app_port" -gt 1024 ] && [ "$app_port" -lt 65535 ]; then
-        break
-    else
-        echo -e "${CROSS} ${RED}Cổng không hợp lệ! Vui lòng nhập số từ 1024 đến 65535.${NC}"
-    fi
-done
-
-# ==============================================================================
-# 1. SINH CẤU HÌNH ECOSYSTEM.CONFIG.JS CHO PM2
-# ==============================================================================
 ECO_FILE="${APP_PATH}/ecosystem.config.js"
-echo -e "\n${BOLD}${WHITE}==> 1. Thiết lập tệp tin cấu hình PM2 (ecosystem.config.js)${NC}"
-
 write_eco="y"
+
 if [ -f "$ECO_FILE" ]; then
     echo -e "${WARN} Phát hiện tệp tin ${BOLD}ecosystem.config.js${NC} đã tồn tại sẵn trong dự án."
     read -p "❓ Bạn có muốn ghi đè bằng cấu hình Cluster Mode tối ưu mới không? (y/N): " overwrite_eco
@@ -98,6 +83,24 @@ if [ -f "$ECO_FILE" ]; then
         write_eco="n"
     fi
 fi
+
+# Nhập cổng (Port) ứng dụng chạy thực tế - CHỈ hỏi nếu cần ghi mới/ghi đè cấu hình PM2
+app_port=""
+if [ "$write_eco" = "y" ]; then
+    while true; do
+        read -p "👉 Nhập cổng chạy Node.js/Next.js của dự án này (Ví dụ: 3000, 3008): " app_port
+        if [[ "$app_port" =~ ^[0-9]+$ ]] && [ "$app_port" -gt 1024 ] && [ "$app_port" -lt 65535 ]; then
+            break
+        else
+            echo -e "${CROSS} ${RED}Cổng không hợp lệ! Vui lòng nhập số từ 1024 đến 65535.${NC}"
+        fi
+    done
+fi
+
+# ==============================================================================
+# 1. SINH CẤU HÌNH ECOSYSTEM.CONFIG.JS CHO PM2
+# ==============================================================================
+echo -e "\n${BOLD}${WHITE}==> 1. Thiết lập tệp tin cấu hình PM2 (ecosystem.config.js)${NC}"
 
 if [ "$write_eco" = "y" ]; then
     # Tạo config ecosystem.config.js mẫu tối ưu Cluster Mode
