@@ -346,14 +346,7 @@ EOF
 
         # Nếu chọn Build & Deploy, ghi thêm Job Deploy vào tệp tin
         if [ "$mode_choice" = "2" ]; then
-            # Thư mục deploy mặc định
-            default_deploy_dir="/home/${domain}"
-            if [ "$br" != "main" ] && [ "$br" != "master" ]; then
-                default_deploy_dir="/home/${domain}-${br}"
-            fi
-            
-            read -p "👉 Nhập thư mục deploy trên VPS cho chi nhánh [${br}] (Mặc định: ${default_deploy_dir}): " deploy_dir
-            deploy_dir=${deploy_dir:-"$default_deploy_dir"}
+            deploy_dir="/home/${domain}"
             
             # Đảm bảo thư mục deploy tồn tại trên VPS và thuộc sở hữu của deployer
             mkdir -p "${deploy_dir}"

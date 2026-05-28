@@ -289,9 +289,12 @@ project_detail_menu() {
                         read -p "👉 Nhập tên nhánh Production (Mặc định: main): " prod_branch
                         prod_branch=${prod_branch:-"main"}
 
+                        local stg_upper; stg_upper=$(echo "$stg_branch" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr '/' '_')
+                        local prod_upper; prod_upper=$(echo "$prod_branch" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr '/' '_')
+
                         # Create the CI/CD file by replacing placeholders
                         cat "$template" | \
-                            sed "s|api.vitech.vn-develop|${domain}-${stg_branch}|g" | \
+                            sed "s|api.vitech.vn-develop|${domain}|g" | \
                             sed "s|api.vitech.vn|${domain}|g" | \
                             sed "s|CI_COMMIT_BRANCH == \"develop\"|CI_COMMIT_BRANCH == \"${stg_branch}\"|g" | \
                             sed "s|CI_COMMIT_BRANCH == \"main\"|CI_COMMIT_BRANCH == \"${prod_branch}\"|g" | \
@@ -300,13 +303,15 @@ project_detail_menu() {
                             sed "s|deploy-staging:|deploy-${stg_branch}:|g" | \
                             sed "s|deploy-production:|deploy-${prod_branch}:|g" | \
                             sed "s|dependencies:\s*- build-staging|dependencies:\n    - build-${stg_branch}|g" | \
-                            sed "s|dependencies:\s*- build-production|dependencies:\n    - build-${prod_branch}|g" \
+                            sed "s|dependencies:\s*- build-production|dependencies:\n    - build-${prod_branch}|g" | \
+                            sed "s|ENV_LOCAL_DEVELOP|ENV_LOCAL_${stg_upper}|g" | \
+                            sed "s|ENV_LOCAL_PRODUCTION|ENV_LOCAL_${prod_upper}|g" \
                             > "$target_ci"
                         
                         chown deployer:deployer "$target_ci" 2>/dev/null || true
                         echo -e "\n${OK} Đã cấu hình thành công tệp: ${BOLD}${target_ci}${NC}"
-                        echo -e " 🔹 Nhánh Staging   : ${BOLD}${stg_branch}${NC} → Thư mục deploy: ${BOLD}/home/${domain}-${stg_branch}${NC}"
-                        echo -e " 🔹 Nhánh Production: ${BOLD}${prod_branch}${NC} → Thư mục deploy: ${BOLD}/home/${domain}${NC}"
+                        echo -e " 🔹 Nhánh Staging   : ${BOLD}${stg_branch}${NC} → Thư mục deploy: ${BOLD}/home/${domain}${NC} (Biến env: ${BOLD}ENV_LOCAL_${stg_upper}${NC})"
+                        echo -e " 🔹 Nhánh Production: ${BOLD}${prod_branch}${NC} → Thư mục deploy: ${BOLD}/home/${domain}${NC} (Biến env: ${BOLD}ENV_LOCAL_${prod_upper}${NC})"
                         echo -e "\n💡 Hãy sao chép Deployer Private Key (chọn mục [6]) để cấu hình GitLab CI/CD Variables."
                     fi
                 fi
