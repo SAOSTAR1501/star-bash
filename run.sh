@@ -23,6 +23,9 @@ if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}${BOLD}Error:${NC} Cần chạy với quyền root: ${BOLD}sudo bash run.sh${NC}"; exit 1
 fi
 
+# Tự động cấp quyền thực thi (executable bit) cho toàn bộ các script con trong DevOps Suite
+find "$SCRIPT_DIR" -type f -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
+
 # ─── GLOBAL STATE (populated by scan functions) ──────────────────────────────
 S_NODE=""; S_NPM=""; S_PM2=""; S_DOCKER=""; S_COMPOSE=""; S_NGINX=""; S_CERTBOT=""
 S_WARP=""; S_WARP_DETAIL=""; S_DEPLOYER=""; S_DEPLOYER_DETAIL=""; S_RUNNER=""; S_RUNNER_DETAIL=""
