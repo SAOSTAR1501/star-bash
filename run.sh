@@ -33,54 +33,83 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-WARP_RECOMMEND=""
-check_warp_status() {
-    # Check if warp-cli is installed
+WARP_STATUS_LABEL=""
+DEPLOYER_STATUS_LABEL=""
+RUNNER_STATUS_LABEL=""
+
+REC_WARP=""
+REC_DEPLOYER=""
+REC_RUNNER=""
+
+check_system_status() {
+    # 1. Check Cloudflare WARP & GitLab Connection
     if ! command -v warp-cli &>/dev/null; then
-        WARP_RECOMMEND="${RED}[Chưa cài WARP - Hãy chạy mục [8]]${NC}"
-        return
-    fi
-
-    # Check registration
-    local reg_show
-    reg_show=$(warp-cli registration show 2>/dev/null || echo "Missing registration")
-    if ! echo "$reg_show" | grep -q "Account type: Team"; then
-        WARP_RECOMMEND="${RED}[WARP Chưa Liên Kết Zero Trust - Hãy chạy mục [8]]${NC}"
-        return
-    fi
-
-    # Check connection
-    local status_show
-    status_show=$(warp-cli status 2>/dev/null | grep -i "status" || echo "")
-    if ! echo "$status_show" | grep -q "Connected"; then
-        WARP_RECOMMEND="${YELLOW}[WARP Chưa Kết Nối - Hãy chạy mục [8]]${NC}"
-        return
-    fi
-
-    # Check SSH to gitlab-local
-    if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o BatchMode=yes -T gitlab-local 2>&1 | grep -q "Welcome to GitLab"; then
-        WARP_RECOMMEND="${GREEN}[Connected & SSH OK]${NC}"
+        WARP_STATUS_LABEL="${RED}[Chưa cài WARP]${NC}"
+        REC_WARP="${RED}[ĐỀ XUẤT CHẠY]${NC}"
     else
-        if nc -vz -w 2 192.168.1.138 2222 &>/dev/null; then
-            WARP_RECOMMEND="${YELLOW}[WARP Connected, SSH Keys Chưa Add - Hãy chạy mục [8]]${NC}"
+        local reg_show
+        reg_show=$(warp-cli registration show 2>/dev/null || echo "Missing registration")
+        if ! echo "$reg_show" | grep -q "Account type: Team"; then
+            WARP_STATUS_LABEL="${RED}[WARP Chưa Liên Kết Zero Trust]${NC}"
+            REC_WARP="${RED}[ĐỀ XUẤT CHẠY]${NC}"
         else
-            WARP_RECOMMEND="${RED}[WARP Connected Nhưng Mạng Lỗi]${NC}"
+            local status_show
+            status_show=$(warp-cli status 2>/dev/null | grep -i "status" || echo "")
+            if ! echo "$status_show" | grep -q "Connected"; then
+                WARP_STATUS_LABEL="${YELLOW}[WARP Chưa Kết Nối]${NC}"
+                REC_WARP="${RED}[ĐỀ XUẤT CHẠY]${NC}"
+            else
+                if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o BatchMode=yes -T gitlab-local 2>&1 | grep -q "Welcome to GitLab"; then
+                    WARP_STATUS_LABEL="${GREEN}[Connected & SSH OK]${NC}"
+                    REC_WARP=""
+                else
+                    if nc -vz -w 2 192.168.1.138 2222 &>/dev/null; then
+                        WARP_STATUS_LABEL="${YELLOW}[Connected, SSH Key Chưa Add]${NC}"
+                        REC_WARP="${YELLOW}[CẦN ADD SSH KEY]${NC}"
+                    else
+                        WARP_STATUS_LABEL="${RED}[WARP Kết Nối Lỗi Mạng]${NC}"
+                        REC_WARP="${RED}[ĐỀ XUẤT CHẠY]${NC}"
+                    fi
+                fi
+            fi
         fi
+    fi
+
+    # 2. Check deployer user
+    if getent passwd deployer &>/dev/null; then
+        DEPLOYER_STATUS_LABEL="${GREEN}[Đã có user deployer]${NC}"
+        REC_DEPLOYER=""
+    else
+        DEPLOYER_STATUS_LABEL="${RED}[Chưa cấu hình user deployer]${NC}"
+        REC_DEPLOYER="${RED}[ĐỀ XUẤT CHẠY]${NC}"
+    fi
+
+    # 3. Check gitlab-runner
+    if command -v gitlab-runner &>/dev/null; then
+        RUNNER_STATUS_LABEL="${GREEN}[Đã cài đặt GitLab Runner]${NC}"
+        REC_RUNNER=""
+    else
+        RUNNER_STATUS_LABEL="${RED}[Chưa cài đặt GitLab Runner]${NC}"
+        REC_RUNNER="${RED}[ĐỀ XUẤT CHẠY]${NC}"
     fi
 }
 
 show_banner() {
     clear
-    check_warp_status
+    check_system_status
     echo -e "${BOLD}${CYAN}"
     echo "========================================================================"
     echo "    🌟 STAR-BASH VPS ORCHESTRATOR & DEPLOYMENT HUB 🌟                 "
     echo "========================================================================"
     echo -e "${NC}"
-    echo -e "${BOLD}${WHITE}Hệ điều hành :${NC} $(lsb_release -d 2>/dev/null | cut -f2 || cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2 || echo "Linux")"
-    echo -e "${BOLD}${WHITE}Uptime       :${NC} $(uptime -p)"
-    echo -e "${BOLD}${WHITE}Thư mục gốc  :${NC} ${SCRIPT_DIR}"
-    echo -e "${BOLD}${WHITE}Kết nối WARP :${NC} ${WARP_RECOMMEND}"
+    echo -e "${BOLD}${WHITE}Hệ điều hành  :${NC} $(lsb_release -d 2>/dev/null | cut -f2 || cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2 || echo "Linux")"
+    echo -e "${BOLD}${WHITE}Uptime        :${NC} $(uptime -p)"
+    echo -e "${BOLD}${WHITE}Thư mục gốc   :${NC} ${SCRIPT_DIR}"
+    echo -e "${BOLD}${CYAN}------------------------------------------------------------------------${NC}"
+    echo -e "${BOLD}${WHITE}[TRẠNG THÁI HỆ THỐNG]:${NC}"
+    echo -e " 🦊 Kết nối WARP & GitLab : ${WARP_STATUS_LABEL}"
+    echo -e " 🔑 VPS Deployer User     : ${DEPLOYER_STATUS_LABEL}"
+    echo -e " ⚙️  GitLab Runner         : ${RUNNER_STATUS_LABEL}"
     echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
 }
 
@@ -227,8 +256,14 @@ main_menu() {
         echo -e " [5] 🚀 ${BOLD}Khởi tạo dự án mới hoàn toàn (FE/BE Orchestrator)${NC} ${GREEN}[KHUYÊN DÙNG]${NC}"
         echo -e "      (Tự động Clone, sinh PM2 Cluster, tạo Nginx site, cài SSL và sinh GitLab CI/CD)"
         echo -e ""
-        echo -e " [8] 🦊 ${BOLD}Cấu hình kết nối Cloudflare WARP & GitLab Local${NC}"
-        echo -e "      (Cài đặt WARP, liên kết Zero Trust Team, test định tuyến và sinh SSH Keys bảo mật)"
+        echo -e " [6] 🔑 ${BOLD}Tạo user deployer và SSH Key bảo mật${NC} ${REC_DEPLOYER}"
+        echo -e "      (Thiết lập deployer user hạn chế & cấu hình SSH Keys cho CI/CD)"
+        echo -e ""
+        echo -e " [7] 🦊 ${BOLD}Cài đặt GitLab Runner an toàn (Non-Root)${NC} ${REC_RUNNER}"
+        echo -e "      (Tải, cài đặt và đăng ký GitLab Runner chạy chế độ bảo mật không root)"
+        echo -e ""
+        echo -e " [8] 🦊 ${BOLD}Cấu hình kết nối Cloudflare WARP & GitLab Local${NC} ${REC_WARP}"
+        echo -e "      (Cài đặt WARP, liên kết Zero Trust Team, test định tuyến và cấu hình alias SSH)"
         echo -e ""
         echo -e " [0] 🚪 ${BOLD}Thoát chương trình${NC}"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
@@ -264,6 +299,20 @@ main_menu() {
                     bash "$SCRIPT_DIR/setup/orchestrate_new_project.sh"
                 else
                     echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/orchestrate_new_project.sh"
+                fi
+                ;;
+            6)
+                if [ -f "$SCRIPT_DIR/setup/setup_vps_deployer.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/setup_vps_deployer.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/setup_vps_deployer.sh"
+                fi
+                ;;
+            7)
+                if [ -f "$SCRIPT_DIR/setup/setup_gitlab_runner.sh" ]; then
+                    bash "$SCRIPT_DIR/setup/setup_gitlab_runner.sh"
+                else
+                    echo -e "${CROSS} Không tìm thấy file script tại $SCRIPT_DIR/setup/setup_gitlab_runner.sh"
                 fi
                 ;;
             8)
