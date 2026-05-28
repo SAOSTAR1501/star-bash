@@ -182,10 +182,13 @@ scan_projects() {
                 else
                     type="FE"
                     if command -v pm2 &>/dev/null; then
-                        local pm2_status; pm2_status=$(sudo -u deployer pm2 jlist 2>/dev/null || pm2 jlist 2>/dev/null)
-                        pm2_status=$(echo "$pm2_status" | grep -oP "\"name\":\"$name\".*?\"status\":\"[a-z]+\"" | head -1 || echo "")
-                        if echo "$pm2_status" | grep -q "online"; then
+                        local pm2_deployer; pm2_deployer=$(sudo -u deployer pm2 jlist 2>/dev/null || echo "")
+                        local pm2_root; pm2_root=$(pm2 jlist 2>/dev/null || echo "")
+                        
+                        if echo "$pm2_deployer" | grep -Fq "\"name\":\"$name\"" && echo "$pm2_deployer" | grep -oP "\"name\":\"$name\".*?\"status\":\"[a-z]+\"" | grep -q "online"; then
                             runtime="${GREEN}running${NC}"
+                        elif echo "$pm2_root" | grep -Fq "\"name\":\"$name\"" && echo "$pm2_root" | grep -oP "\"name\":\"$name\".*?\"status\":\"[a-z]+\"" | grep -q "online"; then
+                            runtime="${YELLOW}running (root)${NC}"
                         elif [ -f "$pdir/ecosystem.config.js" ]; then
                             runtime="${RED}stopped${NC}"
                         else
