@@ -48,7 +48,12 @@ echo -e "\n${BOLD}${WHITE}==> 1. Tạo tài khoản người dùng hạn chế q
 if id "${DEPLOY_USER}" &>/dev/null; then
     echo -e "${WARN} User '${DEPLOY_USER}' đã tồn tại trên hệ thống. Bỏ qua bước tạo mới."
 else
-    useradd --create-home --shell /bin/bash ${DEPLOY_USER}
+    # Kiểm tra xem group deployer đã tồn tại chưa
+    if getent group "${DEPLOY_USER}" &>/dev/null; then
+        useradd -g "${DEPLOY_USER}" --create-home --shell /bin/bash "${DEPLOY_USER}"
+    else
+        useradd --create-home --shell /bin/bash "${DEPLOY_USER}"
+    fi
     echo -e "${TICK} Đã tạo thành công tài khoản '${DEPLOY_USER}'."
 fi
 
