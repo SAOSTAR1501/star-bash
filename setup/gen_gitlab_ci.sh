@@ -238,7 +238,7 @@ deploy-staging:
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
         export PATH=\\\$PATH:/usr/bin:/usr/local/bin &&
-        npm install --omit=dev --prefer-offline --no-audit &&
+        npm install --omit=dev --prefer-offline --no-audit --ignore-scripts &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường STAGING thành công!"
@@ -269,7 +269,7 @@ deploy-production:
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
         export PATH=\\\$PATH:/usr/bin:/usr/local/bin &&
-        npm install --omit=dev --prefer-offline --no-audit &&
+        npm install --omit=dev --prefer-offline --no-audit --ignore-scripts &&
         pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
       "
     - echo "✅ Deploy lên môi trường PRODUCTION thành công!"
