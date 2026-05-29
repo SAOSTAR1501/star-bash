@@ -285,6 +285,7 @@ project_detail_menu() {
                 ;;
             4_old)
                 local target_ci="${pdir}/.gitlab-ci.yml"
+                if [ "$type" = "FE" ]; then
                     echo -e "\n🦊 CẤU HÌNH PIPELINE CI/CD ĐA CHI NHÁNH CHO FRONTEND Next.js..."
                     echo -e "------------------------------------------------------------------------"
                     
