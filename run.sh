@@ -800,6 +800,11 @@ dispatch_choice() {
                         read -p "👉 Nhập mô tả Runner (Mặc định: '$default_desc'): " runner_desc
                         runner_desc=${runner_desc:-"$default_desc"}
                         
+                        # Lấy Docker Image mặc định
+                        default_image="alpine:latest"
+                        read -p "👉 Nhập Docker Image mặc định (Mặc định: '$default_image'): " docker_image
+                        docker_image=${docker_image:-"$default_image"}
+                        
                         # Đăng ký chính thức
                         if gitlab-runner register \
                             --non-interactive \
@@ -808,7 +813,7 @@ dispatch_choice() {
                             --registration-token "$gitlab_token" \
                             --executor "docker" \
                             --description "$runner_desc" \
-                            --docker-image "alpine:latest" \
+                            --docker-image "$docker_image" \
                             $tag_param; then
                             echo -e "\n${OK} ${GREEN}Đăng ký Runner thành công!${NC}"
                             chown -R gitlab-runner:gitlab-runner /etc/gitlab-runner 2>/dev/null || true
