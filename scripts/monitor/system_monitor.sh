@@ -6,7 +6,7 @@
 #                 SSH Audit, failed SSH logins brute-force detect, Malware & Privilege scans)
 #                 with High-end Telegram & Lark Card formatting.
 # Author        : Antigravity AI
-# Version       : 5.0.0
+# Version       : 5.1.0
 # ==============================================================================
 
 # Thiết lập đường dẫn cấu hình toàn cục an toàn ngoài thư mục dự án
@@ -208,26 +208,43 @@ TX_SPEED_MB=$(echo "$TX1 $TX2" | awk '{printf "%.2f", ($2-$1)/1024/1024/2}')
 if [ "$TEST_MODE" = "true" ]; then
     echo -e "🧪 [Chế độ chạy thử] Khởi chạy mô phỏng gửi cảnh báo..."
     
-    # 1. Giả lập tài nguyên quá tải
-    TOP_RAM_PROCESS="PID 226394  RAM 34.5%  /usr/bin/node (NextJS Build)\nPID 5996    RAM 12.1%  /usr/bin/dockerd"
+    # 1. Giả lập CPU quá tải & Top 5 processes ngốn CPU
+    TOP_CPU_PROCESS="%CPU   PID    COMMAND\n12.8  295551  dockerd\n12.5  316039  bash\n 0.6  265354  warp-svc\n 0.3   22540  containerd\n 0.2  296023  node"
+    TELE_ALERT_MSG+="🔥 <b>[MÔ PHỎNG] CPU/TẢI HỆ THỐNG QUÁ TẢI</b>
+<b>Tải trung bình (1/5/15m):</b> <code>2.45 1.80 1.15</code> (Số nhân CPU: 2)
+<pre>Top 5 tiến trình ngốn CPU nhất:
+$TOP_CPU_PROCESS</pre>
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    
+    LARK_ALERT_MSG+="🔥 **[MÔ PHỎNG] CPU/TẢI HỆ THỐNG QUÁ TẢI**\n"
+    LARK_ALERT_MSG+="**Tải trung bình (1/5/15m):** \`2.45 1.80 1.15\` (Số nhân CPU: 2)\n"
+    LARK_ALERT_MSG+="*Top 5 tiến trình ngốn CPU nhất:*\n"
+    LARK_ALERT_MSG+='```'
+    LARK_ALERT_MSG+=$'\n'"$TOP_CPU_PROCESS"
+    LARK_ALERT_MSG+=$'\n'
+    LARK_ALERT_MSG+='```'
+    LARK_ALERT_MSG+=$'\n\n'
+
+    # 2. Giả lập RAM & Swap quá tải & Top 5 processes ngốn RAM
+    TOP_RAM_PROCESS="%MEM   PID    COMMAND\n 5.6  295551  dockerd\n 3.3 2797617  next-server\n 1.6  296034  minio\n 1.5  265354  warp-svc\n 1.4  464433  next-server"
     TELE_ALERT_MSG+="⚠️ <b>[MÔ PHỎNG] RAM VÀ SWAP QUÁ TẢI</b>
 <b>Dung lượng RAM thực tế:</b> dùng 14.2GB / 15.0GB (94%)
 <b>Dung lượng bộ nhớ ảo SWAP:</b> dùng 2.8GB / 4.0GB (70%)
-<pre>Top tiến trình ngốn RAM nhất:
+<pre>Top 5 tiến trình ngốn RAM nhất:
 $TOP_RAM_PROCESS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
     
     LARK_ALERT_MSG+="⚠️ **[MÔ PHỎNG] RAM VÀ SWAP QUÁ TẢI**\n"
     LARK_ALERT_MSG+="* Dung lượng RAM thực tế: dùng 14.2GB / 15.0GB (94%)\n"
     LARK_ALERT_MSG+="* Dung lượng bộ nhớ ảo SWAP: dùng 2.8GB / 4.0GB (70%)\n"
-    LARK_ALERT_MSG+="*Top tiến trình chiếm dụng:*\n"
+    LARK_ALERT_MSG+="*Top 5 tiến trình ngốn RAM nhất:*\n"
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n'"$TOP_RAM_PROCESS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n\n'
 
-    # 2. Giả lập Cảnh báo Tường lửa & SSH (Từ Security Audit)
+    # 3. Giả lập Cảnh báo Tường lửa & SSH (Từ Security Audit)
     TELE_ALERT_MSG+="🛡️ <b>[MÔ PHỎNG] CẢNH BÁO TƯỜNG LỬA & BẢO MẬT SSH:</b>
 <b>Cảnh báo Tường lửa:</b> 🔴 <b>UFW Firewall đang bị TẮT (INACTIVE)</b>
 <b>Cảnh báo SSH Port:</b> ⚠️ SSH đang mở ở cổng mặc định <b>22</b>
@@ -239,38 +256,26 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+="* Cảnh báo SSH Port: ⚠️ SSH đang mở ở cổng mặc định **22**\n"
     LARK_ALERT_MSG+="* Cảnh báo Root login: 🔴 Cho phép root đăng nhập trực tiếp qua mật khẩu!\n\n"
 
-    # 3. Giả lập Brute-force SSH (Từ Security Audit)
-    IP_ATTACKS="- 112.198.23.45 (Philippines) : 1,450 lần\n- 45.123.45.67 (China)       : 820 lần"
+    # 4. Giả lập Brute-force SSH & Top 5 IP dò mật khẩu
+    IP_ATTACKS="Lượt thử   Địa chỉ IP\n  1450     112.198.23.45 (Philippines)\n   820     45.123.45.67 (China)\n   412     192.241.22.88 (United States)\n   215     185.220.10.15 (Netherlands)\n   188     93.115.28.140 (Romania)"
     TELE_ALERT_MSG+="🕵️ <b>[MÔ PHỎNG] PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):</b>
-Tổng số lượt SSH đăng nhập thất bại trong 30 phút: <b>2,270 lần</b>
-<pre>Top 2 địa chỉ IP tấn công dồn dập nhất:
+Tổng số lượt SSH đăng nhập thất bại trong 30 phút: <b>3,085 lần</b>
+<pre>Top 5 IPs responsible for failed SSH attempts:
 $IP_ATTACKS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     LARK_ALERT_MSG+="🕵️ **[MÔ PHỎNG] PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):**\n"
-    LARK_ALERT_MSG+="Tổng số lượt SSH đăng nhập thất bại trong 30 phút: **2,270 lần**\n"
-    LARK_ALERT_MSG+="*Top địa chỉ IP tấn công dồn dập nhất:*\n"
+    LARK_ALERT_MSG+="Tổng số lượt SSH đăng nhập thất bại trong 30 phút: **3,085 lần**\n"
+    LARK_ALERT_MSG+="*Top 5 IPs responsible for failed SSH attempts:*\n"
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n'"$IP_ATTACKS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n\n'
 
-    # 4. Giả lập Đăng nhập SSH thành công
-    RECENT_LOGINS="- root from 113.161.12.34 (accepted password)\n- deployer from 113.161.12.34 (accepted publickey)"
-    TELE_ALERT_MSG+="🔑 <b>[MÔ PHỎNG] ĐĂNG NHẬP SSH THÀNH CÔNG MỚI:</b>
-<pre>$RECENT_LOGINS</pre>
-━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    
-    LARK_ALERT_MSG+="🔑 **[MÔ PHỎNG] ĐĂNG NHẬP SSH THÀNH CÔNG MỚI:**\n"
-    LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n'"$RECENT_LOGINS"
-    LARK_ALERT_MSG+=$'\n'
-    LARK_ALERT_MSG+='```'
-
     # Thực thi gửi tin nhắn và thoát
     TELE_ALERT_MSG=$(echo -e "$TELE_ALERT_MSG" | sed 's/━━━━━━━━━━━━━━━━━━━━━━━━\\n$//')
-    LARK_ALERT_MSG=$(echo -e "$LARK_ALERT_MSG")
+    LARK_ALERT_MSG=$(echo -e "$LARK_ALERT_MSG" | sed 's/\\n\\n$//')
     
     send_telegram "$TELE_ALERT_MSG"
     send_lark_card "$LARK_ALERT_MSG"
@@ -284,7 +289,8 @@ fi
 # 1.1 Kiểm tra RAM & SWAP
 RAM_USAGE_PCT=$(free | grep Mem | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
 if [ "$RAM_USAGE_PCT" -ge "$RAM_THRESHOLD_PERCENT" ]; then
-    TOP_RAM_PROCESS=$(ps -eo pid,cmd,%mem --sort=-%mem | head -n 4 | tail -n 3 | awk '{printf "PID %-7s RAM %-4s %s\n", $1, $3"%", $2}')
+    # Lấy thông tin Top 5 tiến trình ngốn RAM nhất theo cấu trúc chuẩn
+    TOP_RAM_PROCESS=$(ps -eo %mem,pid,comm --sort=-%mem | head -n 6 | tail -n 5 | awk '{printf "%5s %7s %s\n", $1, $2, $3}')
     RAM_DETAIL=$(free -h | grep Mem | awk '{printf "Dùng %s / Tổng %s (%s)", $3, $2, "'"$RAM_USAGE_PCT"'%"}')
     
     TELE_ALERT_MSG+="⚠️ <b>RAM HỆ THỐNG TĂNG CAO: ${RAM_USAGE_PCT}%</b> (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)
@@ -301,13 +307,14 @@ if [ "$RAM_USAGE_PCT" -ge "$RAM_THRESHOLD_PERCENT" ]; then
         LARK_ALERT_MSG+="* Bộ nhớ ảo SWAP: \`$SWAP_DETAIL\`\n"
     fi
 
-    TELE_ALERT_MSG+="\n<pre>Top tiến trình ngốn RAM nhất:
+    TELE_ALERT_MSG+="\n<pre>Top 5 tiến trình ngốn RAM nhất:
+%RAM   PID    COMMAND
 $TOP_RAM_PROCESS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="*Top tiến trình chiếm dụng:*\n"
+    LARK_ALERT_MSG+="*Top 5 tiến trình ngốn RAM nhất:*\n"
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n'"$TOP_RAM_PROCESS"
+    LARK_ALERT_MSG+=$'\n'"%RAM   PID    COMMAND"$'\n'"$TOP_RAM_PROCESS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n\n'
@@ -320,19 +327,21 @@ CPU_CORES=$(nproc)
 LOAD_1M=$(cat /proc/loadavg | awk '{print $1}' | cut -d. -f1)
 
 if [ "$CPU_USAGE_PCT" -ge "$CPU_THRESHOLD_PERCENT" ] || [ "$LOAD_1M" -ge "$CPU_CORES" ]; then
-    TOP_CPU_PROCESS=$(ps -eo pid,cmd,%cpu --sort=-%cpu | head -n 4 | tail -n 3 | awk '{printf "PID %-7s CPU %-4s %s\n", $1, $3"%", $2}')
+    # Lấy thông tin Top 5 tiến trình ngốn CPU nhất theo cấu trúc chuẩn
+    TOP_CPU_PROCESS=$(ps -eo %cpu,pid,comm --sort=-%cpu | head -n 6 | tail -n 5 | awk '{printf "%5s %7s %s\n", $1, $2, $3}')
 
     TELE_ALERT_MSG+="🔥 <b>CPU/TẢI HỆ THỐNG QUÁ TẢI: CPU ${CPU_USAGE_PCT}%</b>
 <b>Tải trung bình (1/5/15m):</b> <code>$LOAD_AVG</code> (Nhân CPU: $CPU_CORES)
-<pre>Top tiến trình ngốn CPU nhất:
+<pre>Top 5 tiến trình ngốn CPU nhất:
+%CPU   PID    COMMAND
 $TOP_CPU_PROCESS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
     LARK_ALERT_MSG+="🔥 **CPU/TẢI HỆ THỐNG QUÁ TẢI: CPU ${CPU_USAGE_PCT}%**\n"
     LARK_ALERT_MSG+="**Tải trung bình (1/5/15m):** \`$LOAD_AVG\` (Số nhân CPU: $CPU_CORES)\n"
-    LARK_ALERT_MSG+="*Top tiến trình ngốn CPU nhất:*\n"
+    LARK_ALERT_MSG+="*Top 5 tiến trình ngốn CPU nhất:*\n"
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n'"$TOP_CPU_PROCESS"
+    LARK_ALERT_MSG+=$'\n'"%CPU   PID    COMMAND"$'\n'"$TOP_CPU_PROCESS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n\n'
@@ -393,16 +402,14 @@ if [ "$CONN_TOTAL" -gt 1500 ] || [ "$CONN_SYN_RECV" -gt 30 ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 2. KIỂM TRA BẢO MẬT & TƯỜNG LỬA (MỚI - TỪ SECURITY AUDIT)
+# 2. KIỂM TRA BẢO MẬT & TƯỜNG LỬA
 # ------------------------------------------------------------------------------
 SEC_TELE=""
 SEC_LARK=""
 
 # 2.1 Kiểm tra trạng thái Firewall
-FIREWALL_OK=true
 if command -v ufw &>/dev/null; then
     if ! ufw status | grep -q "Status: active"; then
-        FIREWALL_OK=false
         SEC_TELE+="🔴 <b>Tường lửa UFW Firewall đang bị TẮT (INACTIVE)</b>\n"
         SEC_LARK+="* Tường lửa UFW Firewall đang bị 🔴 **TẮT (INACTIVE)**\n"
     fi
@@ -430,7 +437,6 @@ fi
 
 # 2.3 Quét lỗi leo thang quyền NOPASSWD trong Sudoers
 if [ -f /etc/sudoers ]; then
-    # Lọc trừ ra deployer hợp pháp
     nopasswd_users=$(grep -r -i "NOPASSWD" /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '^#' | grep -v "deployer" || true)
     if [ -n "$nopasswd_users" ]; then
         SEC_TELE+="🔴 <b>Phát hiện tài khoản NOPASSWD lạ trong Sudoers:</b>\n<pre>$nopasswd_users</pre>\n"
@@ -446,18 +452,16 @@ $SEC_TELE━━━━━━━━━━━━━━━━━━━━━━━�
 fi
 
 # ------------------------------------------------------------------------------
-# 3. PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU BRUTE-FORCE SSH (MỚI - TỪ SECURITY AUDIT)
+# 3. PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU BRUTE-FORCE SSH
 # ------------------------------------------------------------------------------
 AUTH_LOG="/var/log/auth.log"
 [ ! -f "$AUTH_LOG" ] && AUTH_LOG="/var/log/secure"
 
 if [ -f "$AUTH_LOG" ]; then
-    # Đếm số lần đăng nhập thất bại trong 30 phút qua
     CURRENT_TIME_EPOCH=$(date +%s)
     FAILED_ATTEMPTS=""
     FAILED_COUNT=0
     
-    # Quét logs SSH thất bại gần nhất
     SSH_FAILS=$(grep -i "Failed password" "$AUTH_LOG" | tail -n 200 || true)
     
     while read -r line; do
@@ -466,7 +470,6 @@ if [ -f "$AUTH_LOG" ]; then
         log_epoch=$(date -d "$log_date_str" +%s 2>/dev/null)
         if [ -n "$log_epoch" ]; then
             diff=$((CURRENT_TIME_EPOCH - log_epoch))
-            # Quét trong 30 phút qua (1800 giây)
             if [ "$diff" -ge 0 ] && [ "$diff" -le 1800 ]; then
                 FAILED_ATTEMPTS+="$line\n"
                 FAILED_COUNT=$((FAILED_COUNT + 1))
@@ -474,22 +477,22 @@ if [ -f "$AUTH_LOG" ]; then
         fi
     done <<< "$SSH_FAILS"
     
-    # Nếu số lần login lỗi vượt quá 30 lần trong 30 phút, phát cảnh báo tấn công dò mật khẩu
     if [ "$FAILED_COUNT" -ge 30 ]; then
-        # Thống kê top 3 IP đang dò mật khẩu
-        TOP_OFFENDERS=$(echo -e "$FAILED_ATTEMPTS" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | sort | uniq -c | sort -nr | head -n 3 | awk '{printf "IP %-15s : %s lần\n", $2, $1}')
+        # Thống kê top 5 IP đang dò mật khẩu nhiều nhất
+        TOP_OFFENDERS=$(echo -e "$FAILED_ATTEMPTS" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | sort | uniq -c | sort -nr | head -n 5 | awk '{printf "  %-7s  %s\n", $1, $2}')
         
         TELE_ALERT_MSG+="🕵️ <b>PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):</b>
 Tổng số lượt đăng nhập SSH thất bại trong 30 phút: <b>$FAILED_COUNT lần</b>
-<pre>Top địa chỉ IP tấn công dồn dập nhất:
+<pre>Top 5 IPs responsible for failed SSH attempts:
+Lượt thử   Địa chỉ IP
 $TOP_OFFENDERS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
         LARK_ALERT_MSG+="🕵️ **PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):**\n"
         LARK_ALERT_MSG+="Tổng số lượt đăng nhập SSH thất bại trong 30 phút: **$FAILED_COUNT lần**\n"
-        LARK_ALERT_MSG+="*Top địa chỉ IP tấn công dồn dập nhất:*\n"
+        LARK_ALERT_MSG+="*Top 5 IPs responsible for failed SSH attempts:*\n"
         LARK_ALERT_MSG+='```'
-        LARK_ALERT_MSG+=$'\n'"$TOP_OFFENDERS"
+        LARK_ALERT_MSG+=$'\n'"Lượt thử   Địa chỉ IP"$'\n'"$TOP_OFFENDERS"
         LARK_ALERT_MSG+=$'\n'
         LARK_ALERT_MSG+='```'
         LARK_ALERT_MSG+=$'\n\n'
@@ -497,7 +500,7 @@ $TOP_OFFENDERS</pre>
 fi
 
 # ------------------------------------------------------------------------------
-# 4. PHÁT HIỆN AN NINH & CẢNH BÁO MALWARE (DỊCH CHUYỂN & NÂNG CẤP)
+# 4. PHÁT HIỆN AN NINH & CẢNH BÁO MALWARE
 # ------------------------------------------------------------------------------
 MALWARE_TELE=""
 MALWARE_LARK=""
@@ -583,5 +586,6 @@ if [ -n "$TELE_ALERT_MSG" ]; then
 fi
 
 if [ -n "$LARK_ALERT_MSG" ]; then
+    LARK_ALERT_MSG=$(echo -e "$LARK_ALERT_MSG" | sed 's/\\n\\n$//')
     send_lark_card "$LARK_ALERT_MSG"
 fi
