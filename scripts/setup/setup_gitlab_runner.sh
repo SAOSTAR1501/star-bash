@@ -79,19 +79,27 @@ fi
 echo -e "\n${BOLD}${WHITE}==> 3. Cài đặt GitLab Runner chính thức nếu chưa có${NC}"
 if ! command -v gitlab-runner &> /dev/null; then
     echo -e "${INFO} GitLab Runner chưa được cài đặt trên hệ thống."
+    
+    echo -e "${INFO} Đang dọn dẹp và sửa chữa các gói cài đặt bị lỗi trên hệ thống (nếu có)..."
+    dpkg --configure -a || true
+    apt-get install -f -y || true
+
     echo -e "${INFO} Đang cài đặt các gói phụ trợ cần thiết (curl, ca-certificates, gnupg, apt-transport-https)..."
     apt-get update -y &>/dev/null || true
     apt-get install -y curl ca-certificates gnupg apt-transport-https &>/dev/null || true
 
-    echo -e "${INFO} Đang tải và cấu hình kho lưu trữ chính thức từ GitLab..."
-    set +o pipefail
-    curl -sS -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" 2>/dev/null | bash || true
-    set -o pipefail
+    echo -e "${INFO} Đang thêm cấu hình kho lưu trữ GitLab Runner thủ công (sử dụng bản phân phối jammy tương thích)..."
+    # Tải và cấu hình GPG Key chính thức của GitLab
+    curl -sS -L "https://packages.gitlab.com/gpg.key" 2>/dev/null | gpg --dearmor --yes -o /usr/share/keyrings/gitlab-runner-archive-keyring.gpg || true
+    
+    # Tạo cấu hình kho lưu trữ sử dụng jammy (tương thích hoàn toàn 100% với noble/Ubuntu 24.04)
+    echo "deb [signed-by=/usr/share/keyrings/gitlab-runner-archive-keyring.gpg] https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ jammy main" > /etc/apt/sources.list.d/runner_gitlab-runner.list
+    echo "deb-src [signed-by=/usr/share/keyrings/gitlab-runner-archive-keyring.gpg] https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ jammy main" >> /etc/apt/sources.list.d/runner_gitlab-runner.list
 
-    echo -e "${INFO} Đang cài đặt gitlab-runner package qua apt..."
+    echo -e "${INFO} Đang cập nhật danh sách gói và cài đặt gitlab-runner qua apt..."
     apt-get update -y || true
     if ! apt-get install -y gitlab-runner; then
-        echo -e "${WARN} Cài đặt qua kho lưu trữ apt thất bại (có thể do phiên bản OS chưa được hỗ trợ)."
+        echo -e "${WARN} Cài đặt qua apt-get thất bại."
         echo -e "${INFO} Đang tiến hành tải trực tiếp gói cài đặt .deb chính thức từ GitLab..."
         
         # Xác định kiến trúc máy chủ (mặc định x86_64/amd64 hoặc arm64)
@@ -106,7 +114,9 @@ if ! command -v gitlab-runner &> /dev/null; then
         
         if [ -f "gitlab-runner_${pkg_arch}.deb" ]; then
             echo -e "${INFO} Đang cài đặt tệp .deb qua dpkg..."
-            dpkg -i "gitlab-runner_${pkg_arch}.deb" || apt-get install -f -y || true
+            # Tự động bỏ qua lỗi dependency nếu có để ép dpkg cài đặt, sau đó sửa chữa
+            dpkg -i --force-depends "gitlab-runner_${pkg_arch}.deb" || true
+            apt-get install -f -y || true
             rm -f "gitlab-runner_${pkg_arch}.deb"
         fi
     fi
