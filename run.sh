@@ -166,11 +166,25 @@ project_detail_menu() {
         
         # Details Scan
         local git_remote; git_remote=$(git -C "$pdir" remote get-url origin 2>/dev/null || echo "None")
-        local git_branch; git_branch=$(git -C "$pdir" branch --show-current 2>/dev/null || echo "None")
+        local git_branch; git_branch=$(git -C "$pdir" branch --show-current 2>/dev/null || echo "detached")
+        local git_last_commit; git_last_commit=$(git -C "$pdir" log -1 --format="%h — %s (%cr)" 2>/dev/null || echo "N/A")
+        local git_remote_branches; git_remote_branches=$(git -C "$pdir" branch -r 2>/dev/null | grep -v 'origin/HEAD' | sed 's/^[[:space:]]*origin\///' | tr '\n' ',' | sed 's/,$//' || echo "N/A")
+        local git_status_clean; git_status_clean=$(git -C "$pdir" status --porcelain 2>/dev/null)
         local owner; owner=$(stat -c '%U:%G' "$pdir" 2>/dev/null || echo "unknown")
         
         echo -e "  📁 Đường dẫn VPS : ${BOLD}$pdir${NC}"
-        echo -e "  🔀 Git Repository: ${BOLD}$git_remote${NC} (${BOLD}$git_branch${NC})"
+        echo -e "  🔀 Git Remote    : ${BOLD}$git_remote${NC}"
+        echo -e "  🌿 Nhánh hiện tại: ${BOLD}${GREEN}$git_branch${NC}"
+        echo -e "  📝 Commit gần nhất: ${DIM}$git_last_commit${NC}"
+        if [ -n "$git_remote_branches" ] && [ "$git_remote_branches" != "N/A" ]; then
+            echo -e "  🌐 Remote branches: ${CYAN}$git_remote_branches${NC}"
+        fi
+        if [ -z "$git_status_clean" ]; then
+            echo -e "  📦 Working tree  : ${GREEN}Sạch (clean)${NC}"
+        else
+            local changed_count; changed_count=$(echo "$git_status_clean" | wc -l)
+            echo -e "  📦 Working tree  : ${YELLOW}Có $changed_count file thay đổi chưa commit${NC}"
+        fi
         echo -e "  🔑 Phân quyền    : ${BOLD}$owner${NC}"
         
         if [ "$type" = "FE" ]; then
