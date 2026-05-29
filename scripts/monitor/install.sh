@@ -87,40 +87,37 @@ interactive_config_menu() {
     while true; do
         clear
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
-        echo -e "      ⚙️   ${BOLD}${WHITE}TRÌNH QUẢN LÝ & CẤU HÌNH BOT GIÁM SÁT VPS STAR-BASH${NC}   ⚙️"
+        echo -e "       [+] TRÌNH QUẢN LÝ & CẤU HÌNH BOT CẢNH BÁO VPS (STAR-BASH)        "
         echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
         
-        echo -e " ${BOLD}${WHITE}Trạng thái cấu hình hiện tại:${NC}"
-        
-        # Cấu hình Telegram
+        echo -e " ${BOLD}${WHITE}1. KÊNH CẢNH BÁO TELEGRAM:${NC}"
         if [ "$ENABLE_TELEGRAM" = "true" ]; then
-            echo -e "  📬 [1] Telegram Alert                  : ${GREEN}${BOLD}[ BẬT ]${NC}"
+            echo -e "    👉 [1] Trạng thái Telegram Alert  : ${GREEN}${BOLD}[ ĐANG BẬT ]${NC}"
         else
-            echo -e "  📬 [1] Telegram Alert                  : ${RED}${BOLD}[ TẮT ]${NC}"
+            echo -e "    👉 [1] Trạng thái Telegram Alert  : ${RED}${BOLD}[ ĐANG TẮT ]${NC}"
         fi
-        echo -e "         - Bot Token & Chat ID           : [2] $([ -n "$TELEGRAM_BOT_TOKEN" ] && echo -e "${CYAN}Đã cấu hình (${NC}$(mask_token "$TELEGRAM_BOT_TOKEN")${CYAN})${NC}" || echo -e "${RED}Chưa cấu hình${NC}")"
+        echo -e "    👉 [2] Cấu hình Token & Chat ID   : $([ -n "$TELEGRAM_BOT_TOKEN" ] && echo -e "${CYAN}Đã cấu hình (${NC}$(mask_token "$TELEGRAM_BOT_TOKEN")${CYAN})${NC}" || echo -e "${RED}Chưa cấu hình${NC}")"
         
-        # Cấu hình Lark Suite
+        echo -e "\n ${BOLD}${WHITE}2. KÊNH CẢNH BÁO LARK SUITE BOT:${NC}"
         if [ "$ENABLE_LARK" = "true" ]; then
-            echo -e "  📬 [3] Lark Suite Bot Alert            : ${GREEN}${BOLD}[ BẬT ]${NC}"
+            echo -e "    👉 [3] Trạng thái Lark Alert      : ${GREEN}${BOLD}[ ĐANG BẬT ]${NC}"
         else
-            echo -e "  📬 [3] Lark Suite Bot Alert            : ${RED}${BOLD}[ TẮT ]${NC}"
+            echo -e "    👉 [3] Trạng thái Lark Alert      : ${RED}${BOLD}[ ĐANG TẮT ]${NC}"
         fi
-        echo -e "         - Lark Webhook URL              : [4] $([ -n "$LARK_WEBHOOK_URL" ] && echo -e "${CYAN}Đã cấu hình (${NC}$(mask_token "$LARK_WEBHOOK_URL")${CYAN})${NC}" || echo -e "${RED}Chưa cấu hình${NC}")"
+        echo -e "    👉 [4] Cấu hình Lark Webhook URL  : $([ -n "$LARK_WEBHOOK_URL" ] && echo -e "${CYAN}Đã cấu hình (${NC}$(mask_token "$LARK_WEBHOOK_URL")${CYAN})${NC}" || echo -e "${RED}Chưa cấu hình${NC}")"
         
-        # Ngưỡng tài nguyên
-        echo -e "\n  📊 Ngưỡng cảnh báo tài nguyên hiện tại:"
-        echo -e "         - [5] Ngưỡng RAM                : ${YELLOW}${RAM_THRESHOLD_PERCENT}%${NC}"
-        echo -e "         - [6] Ngưỡng CPU                : ${YELLOW}${CPU_THRESHOLD_PERCENT}%${NC}"
-        echo -e "         - [7] Ngưỡng Ổ cứng             : ${YELLOW}${DISK_THRESHOLD_PERCENT}%${NC}"
+        echo -e "\n ${BOLD}${WHITE}3. THIẾT LẬP NGƯỠNG CẢNH BÁO TÀI NGUYÊN:${NC}"
+        echo -e "    👉 [5] Thay đổi Ngưỡng RAM        : ${YELLOW}${RAM_THRESHOLD_PERCENT}%${NC}"
+        echo -e "    👉 [6] Thay đổi Ngưỡng CPU        : ${YELLOW}${CPU_THRESHOLD_PERCENT}%${NC}"
+        echo -e "    👉 [7] Thay đổi Ngưỡng Ổ cứng     : ${YELLOW}${DISK_THRESHOLD_PERCENT}%${NC}"
 
-        # An ninh bổ sung
-        echo -e "\n  🛡️  Bảo mật & Quét an ninh:"
-        echo -e "         - [8] Quét suspicious paths (Malware)   : $([ "$SCAN_SUSPICIOUS_PATHS" = "true" ] && echo -e "${GREEN}BẬT${NC}" || echo -e "${RED}TẮT${NC}")"
-        echo -e "         - [9] Giám sát đăng nhập SSH mới        : $([ "$ENABLE_SSH_MONITOR" = "true" ] && echo -e "${GREEN}BẬT${NC}" || echo -e "${RED}TẮT${NC}")"
+        echo -e "\n ${BOLD}${WHITE}4. GIÁM SÁT AN NINH BỔ SUNG:${NC}"
+        echo -e "    👉 [8] Quét Malware & File tạm    : $([ "$SCAN_SUSPICIOUS_PATHS" = "true" ] && echo -e "${GREEN}BẬT${NC}" || echo -e "${RED}TẮT${NC}")"
+        echo -e "    👉 [9] Cảnh báo đăng nhập SSH mới : $([ "$ENABLE_SSH_MONITOR" = "true" ] && echo -e "${GREEN}BẬT${NC}" || echo -e "${RED}TẮT${NC}")"
         
-        echo -e "\n  [T] Chạy kiểm tra nóng & Gửi thông báo Test ngay"
-        echo -e "  [0] Lưu & Thoát"
+        echo -e "\n ${BOLD}${WHITE}5. THAO TÁC HỆ THỐNG:${NC}"
+        echo -e "    👉 [T] Chạy kiểm tra nóng & Gửi thông báo Test ngay"
+        echo -e "    👉 [0] Lưu cấu hình & Thoát (Áp dụng lịch chạy ngầm 30 phút)"
         echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
         
         read -r -p "👉 Nhập lựa chọn của bạn muốn điều chỉnh [0-9, T]: " choice
