@@ -97,7 +97,7 @@ show_smart_dashboard() {
 prompt_next() {
     local completed_step="$1"
     NEXT_CHOICE=""
-    local prompt_file="$SCRIPT_DIR/setup/prompts/prompt_${completed_step}.sh"
+    local prompt_file="$SCRIPT_DIR/scripts/setup/prompts/prompt_${completed_step}.sh"
     if [ -f "$prompt_file" ]; then
         source "$prompt_file"
     else
@@ -269,16 +269,16 @@ project_detail_menu() {
                 echo -e "\n🦊 CẤU HÌNH / CẬP NHẬT GITLAB CI/CD CHO DỰ ÁN..."
                 echo -e "------------------------------------------------------------------------"
                 if [ "$type" = "FE" ]; then
-                    if [ -f "$SCRIPT_DIR/setup/gen_gitlab_ci_fe.sh" ]; then
-                        bash "$SCRIPT_DIR/setup/gen_gitlab_ci_fe.sh" "$domain" "$pdir"
+                    if [ -f "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci_fe.sh" ]; then
+                        bash "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci_fe.sh" "$domain" "$pdir"
                     else
-                        echo -e "${FAIL} Không tìm thấy file script setup/gen_gitlab_ci_fe.sh"
+                        echo -e "${FAIL} Không tìm thấy file script scripts/setup/gen_gitlab_ci_fe.sh"
                     fi
                 else
-                    if [ -f "$SCRIPT_DIR/setup/gen_gitlab_ci_be.sh" ]; then
-                        bash "$SCRIPT_DIR/setup/gen_gitlab_ci_be.sh" "$domain" "$pdir"
+                    if [ -f "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci_be.sh" ]; then
+                        bash "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci_be.sh" "$domain" "$pdir"
                     else
-                        echo -e "${FAIL} Không tìm thấy file script setup/gen_gitlab_ci_be.sh"
+                        echo -e "${FAIL} Không tìm thấy file script scripts/setup/gen_gitlab_ci_be.sh"
                     fi
                 fi
                 read -r -p "\n👉 Nhấn Enter để tiếp tục..." _
@@ -550,31 +550,31 @@ server_setup_menu() {
         case "$choice" in
             0|"") return 0 ;;
             1)
-                if [ -f "$SCRIPT_DIR/setup/setup.sh" ]; then
-                    bash "$SCRIPT_DIR/setup/setup.sh"
+                if [ -f "$SCRIPT_DIR/scripts/setup/setup.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/setup.sh"
                 else echo -e "${FAIL} Không tìm thấy setup.sh"; fi
                 read -r -p "👉 Done. Nhấn Enter..." _
                 ;;
             2)
-                if [ -f "$SCRIPT_DIR/security/security_check.sh" ]; then
-                    bash "$SCRIPT_DIR/security/security_check.sh"
+                if [ -f "$SCRIPT_DIR/scripts/security/security_check.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/security/security_check.sh"
                 else echo -e "${FAIL} Không tìm thấy security_check.sh"; fi
                 prompt_next "security"
                 ;;
             3)
-                if [ -f "$SCRIPT_DIR/setup/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/setup/sys_monitor.sh" dashboard
+                if [ -f "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" dashboard
                 else echo -e "${FAIL} Không tìm thấy sys_monitor.sh"; fi
                 ;;
             4)
-                if [ -f "$SCRIPT_DIR/setup/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/setup/sys_monitor.sh" config
+                if [ -f "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" config
                 else echo -e "${FAIL} Không tìm thấy sys_monitor.sh"; fi
                 read -r -p "👉 Nhấn Enter..." _
                 ;;
             5)
-                if [ -f "$SCRIPT_DIR/setup/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/setup/sys_monitor.sh" check
+                if [ -f "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" check
                 else echo -e "${FAIL} Không tìm thấy sys_monitor.sh"; fi
                 read -r -p "👉 Nhấn Enter..." _
                 ;;
@@ -608,8 +608,8 @@ other_tools_menu() {
         case "$choice" in
             0|"") return 0 ;;
             1)
-                if [ -f "$SCRIPT_DIR/setup/gen_gitlab_ci.sh" ]; then
-                    bash "$SCRIPT_DIR/setup/gen_gitlab_ci.sh"
+                if [ -f "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci.sh"
                 else echo -e "${FAIL} Không tìm thấy gen_gitlab_ci.sh"; fi
                 read -r -p "👉 Nhấn Enter..." _
                 ;;
@@ -625,18 +625,18 @@ other_tools_menu() {
                 read -r -p "👉 Nhấn Enter..." _
                 ;;
             3)
-                if [ -f "$SCRIPT_DIR/deploy-fe/interactive_setup_site.sh" ]; then
-                    bash "$SCRIPT_DIR/deploy-fe/interactive_setup_site.sh"
+                if [ -f "$SCRIPT_DIR/scripts/deploy-fe/interactive_setup_site.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/deploy-fe/interactive_setup_site.sh"
                 else echo -e "${FAIL} Không tìm thấy interactive_setup_site.sh"; fi
                 ;;
             4)
-                if [ -f "$SCRIPT_DIR/deploy-fe/quick_setup_site.sh" ]; then
+                if [ -f "$SCRIPT_DIR/scripts/deploy-fe/quick_setup_site.sh" ]; then
                     # Quick FE site deployer wrapper
                     echo -e "\n👉 Nhập thông tin để triển khai nhanh:"
                     read -p "  Domain: " d
                     read -p "  Port: " p
                     if [ -n "$d" ] && [ -n "$p" ]; then
-                        bash "$SCRIPT_DIR/deploy-fe/quick_setup_site.sh" "$d" "$p" "yes-eco"
+                        bash "$SCRIPT_DIR/scripts/deploy-fe/quick_setup_site.sh" "$d" "$p" "yes-eco"
                     else echo -e "${FAIL} Thiếu thông tin."; fi
                 else echo -e "${FAIL} Không tìm thấy quick_setup_site.sh"; fi
                 read -r -p "👉 Nhấn Enter..." _
@@ -706,16 +706,16 @@ dispatch_choice() {
         00) show_guidelines ;;
         1)  server_setup_menu ;;
         2)
-            if [ -f "$SCRIPT_DIR/setup/orchestrate_fe_project.sh" ]; then
-                bash "$SCRIPT_DIR/setup/orchestrate_fe_project.sh"
+            if [ -f "$SCRIPT_DIR/scripts/setup/orchestrate_fe_project.sh" ]; then
+                bash "$SCRIPT_DIR/scripts/setup/orchestrate_fe_project.sh"
             else
                 echo -e "${FAIL} orchestrate_fe_project.sh không tìm thấy"; sleep 2
             fi
             prompt_next "fe_project"
             ;;
         3)
-            if [ -f "$SCRIPT_DIR/setup/orchestrate_be_project.sh" ]; then
-                bash "$SCRIPT_DIR/setup/orchestrate_be_project.sh"
+            if [ -f "$SCRIPT_DIR/scripts/setup/orchestrate_be_project.sh" ]; then
+                bash "$SCRIPT_DIR/scripts/setup/orchestrate_be_project.sh"
             else
                 echo -e "${FAIL} orchestrate_be_project.sh không tìm thấy"; sleep 2
             fi
@@ -723,32 +723,32 @@ dispatch_choice() {
             ;;
         4)  project_manager_menu ;;
         5)
-            if [ -f "$SCRIPT_DIR/security/security_check.sh" ]; then
-                bash "$SCRIPT_DIR/security/security_check.sh"
+            if [ -f "$SCRIPT_DIR/scripts/security/security_check.sh" ]; then
+                bash "$SCRIPT_DIR/scripts/security/security_check.sh"
             else
                 echo -e "${FAIL} security_check.sh không tìm thấy"; sleep 2
             fi
             prompt_next "security"
             ;;
         6)
-            if [ -f "$SCRIPT_DIR/setup/setup_vps_deployer.sh" ]; then
-                bash "$SCRIPT_DIR/setup/setup_vps_deployer.sh"
+            if [ -f "$SCRIPT_DIR/scripts/setup/setup_vps_deployer.sh" ]; then
+                bash "$SCRIPT_DIR/scripts/setup/setup_vps_deployer.sh"
             else
                 echo -e "${FAIL} setup_vps_deployer.sh không tìm thấy"; sleep 2
             fi
             prompt_next "deployer"
             ;;
         7)
-            if [ -f "$SCRIPT_DIR/setup/setup_gitlab_runner.sh" ]; then
-                bash "$SCRIPT_DIR/setup/setup_gitlab_runner.sh"
+            if [ -f "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh" ]; then
+                bash "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh"
             else
                 echo -e "${FAIL} setup_gitlab_runner.sh không tìm thấy"; sleep 2
             fi
             prompt_next "runner"
             ;;
         8)
-            if [ -f "$SCRIPT_DIR/setup/setup_warp_gitlab.sh" ]; then
-                bash "$SCRIPT_DIR/setup/setup_warp_gitlab.sh"
+            if [ -f "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh" ]; then
+                bash "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh"
             else
                 echo -e "${FAIL} setup_warp_gitlab.sh không tìm thấy"; sleep 2
             fi
