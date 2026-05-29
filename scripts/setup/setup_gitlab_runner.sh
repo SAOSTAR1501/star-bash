@@ -95,8 +95,8 @@ if ! command -v gitlab-runner &> /dev/null; then
         echo -e "${INFO} Đang tiến hành tải trực tiếp gói cài đặt .deb chính thức từ GitLab..."
         
         # Xác định kiến trúc máy chủ (mặc định x86_64/amd64 hoặc arm64)
-        local arch; arch=$(uname -m)
-        local pkg_arch="amd64"
+        arch=$(uname -m)
+        pkg_arch="amd64"
         if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
             pkg_arch="arm64"
         fi
