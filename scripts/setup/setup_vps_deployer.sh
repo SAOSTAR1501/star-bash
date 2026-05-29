@@ -83,8 +83,21 @@ fi
 # Cấu hình authorized_keys
 cat "${SSH_KEY_FILE}.pub" >> "${DEPLOY_HOME}/.ssh/authorized_keys"
 chmod 600 "${DEPLOY_HOME}/.ssh/authorized_keys"
+
+# Tự động đồng bộ SSH config & SSH keys từ root sang deployer (rất quan trọng để định tuyến host gitlab-local)
+if [ -f "/root/.ssh/config" ]; then
+    cp /root/.ssh/config "${DEPLOY_HOME}/.ssh/config"
+    # Sao chép thêm các Private/Public keys của root nếu config SSH có tham chiếu tới
+    cp /root/.ssh/id_ed25519* "${DEPLOY_HOME}/.ssh/" 2>/dev/null || true
+    cp /root/.ssh/id_rsa* "${DEPLOY_HOME}/.ssh/" 2>/dev/null || true
+    echo -e "${TICK} Đã đồng bộ thành công cấu hình SSH định tuyến (config & keys) từ root sang deployer."
+fi
+
 chown -R ${DEPLOY_USER}:${DEPLOY_USER} "${DEPLOY_HOME}/.ssh"
-echo -e "${TICK} Đã kích hoạt SSH Public Key thành công."
+# Thiết lập lại quyền đọc/ghi bảo mật an toàn cho các tệp tin SSH mới sao chép
+chmod 700 "${DEPLOY_HOME}/.ssh"
+chmod 600 "${DEPLOY_HOME}/.ssh/"* 2>/dev/null || true
+echo -e "${TICK} Đã phân quyền bảo mật tối đa cho toàn bộ khóa SSH của deployer."
 
 # 4. Phân quyền sudo hạn chế cho PM2 và Nginx Reload (An toàn bảo mật tối đa)
 echo -e "\n${BOLD}${WHITE}==> 4. Cấp quyền sudo hạn chế (Chỉ cho phép Nginx reload)${NC}"

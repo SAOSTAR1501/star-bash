@@ -2,9 +2,10 @@
 # ==============================================================================
 # Script Name   : system_monitor.sh
 # Description   : Enterprise VPS monitor (RAM, SWAP, CPU, Load Avg, Disk, Connections, 
-#                 Zombie Procs, Security & Malware scans) with Telegram & Lark Card.
+#                 Zombie Procs, Real-time Network Bandwidth Traffic, Security & Malware scans) 
+#                 with High-end Telegram & Lark Card alert formatting.
 # Author        : Antigravity AI
-# Version       : 3.4.0
+# Version       : 4.0.0
 # ==============================================================================
 
 # Thiết lập đường dẫn cấu hình toàn cục an toàn ngoài thư mục dự án
@@ -38,6 +39,9 @@ fi
 # Các biến thu thập lỗi
 TELE_ALERT_MSG=""
 LARK_ALERT_MSG=""
+
+# Ngưỡng băng thông cảnh báo mặc định nếu chưa khai báo (Đơn vị: MB/s)
+NET_SPEED_THRESHOLD_MB=30
 
 # ------------------------------------------------------------------------------
 # HÀM GỬI THÔNG BÁO TELEGRAM (Định dạng HTML cao cấp)
@@ -75,13 +79,12 @@ $html_body"
 }
 
 # ------------------------------------------------------------------------------
-# HÀM GỬI THÔNG BÁO LARK SUITE (Thẻ Interactive Card cao cấp giống Gitlab)
+# HÀM GỬI THÔNG BÁO LARK SUITE (Thẻ Interactive Card cao cấp)
 # ------------------------------------------------------------------------------
 send_lark_card() {
     local markdown_body="$1"
     if [ "$ENABLE_LARK" = "true" ] && [ -n "$LARK_WEBHOOK_URL" ]; then
         
-        # Đóng gói JSON Interactive Card siêu chuẩn bằng jq
         local payload
         payload=$(jq -n \
             --arg hostname "$HOSTNAME" \
@@ -179,20 +182,47 @@ send_lark_card() {
 }
 
 # ------------------------------------------------------------------------------
+# CẢM BIẾN ĐO TRAFFIC MẠNG THỜI GIAN THỰC (REAL-TIME BANDWIDTH MONITOR)
+# ------------------------------------------------------------------------------
+# Lấy card mạng chính đang hoạt động để internet
+NET_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n 1)
+[ -z "$NET_INTERFACE" ] && NET_INTERFACE="eth0"
+
+# Đọc lượng băng thông Bytes nhận và gửi tại thời điểm t1
+get_net_bytes() {
+    local rx tx
+    rx=$(cat /proc/net/dev | grep "$NET_INTERFACE" | awk '{print $2}')
+    tx=$(cat /proc/net/dev | grep "$NET_INTERFACE" | awk '{print $10}')
+    echo "$rx $tx"
+}
+
+# Tính toán tốc độ truyền tải
+read -r RX1 TX1 <<< "$(get_net_bytes)"
+sleep 2 # Đo lường trong 2 giây để lấy trung bình
+read -r RX2 TX2 <<< "$(get_net_bytes)"
+
+# Tính tốc độ MB/s
+RX_SPEED_MB=$(echo "$RX1 $RX2" | awk '{printf "%.2f", ($2-$1)/1024/1024/2}')
+TX_SPEED_MB=$(echo "$TX1 $TX2" | awk '{printf "%.2f", ($2-$1)/1024/1024/2}')
+
+# ------------------------------------------------------------------------------
 # CHẾ ĐỘ CHẠY THỬ (TEST MODE) - Gửi ngay tin nhắn giả lập
 # ------------------------------------------------------------------------------
 if [ "$TEST_MODE" = "true" ]; then
     echo -e "🧪 [Chế độ chạy thử] Khởi chạy mô phỏng gửi cảnh báo..."
     
-    # Tạo nội dung giả lập RAM quá tải
+    # 1. Giả lập RAM & Disk quá tải
     TOP_RAM_PROCESS="PID 226394  RAM 34.5%  /usr/bin/node (NextJS Build)\nPID 5996    RAM 12.1%  /usr/bin/dockerd"
-    
-    TELE_ALERT_MSG+="⚠️ <b>[MÔ PHỎNG] RAM TĂNG CAO: 92%</b> (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)
+    TELE_ALERT_MSG+="⚠️ <b>[MÔ PHỎNG] RAM VÀ SWAP QUÁ TẢI</b>
+<b>Dung lượng RAM thực tế:</b> dùng 14.2GB / 15.0GB (94%)
+<b>Dung lượng bộ nhớ ảo SWAP:</b> dùng 2.8GB / 4.0GB (70%)
 <pre>Top tiến trình ngốn RAM nhất:
 $TOP_RAM_PROCESS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
     
-    LARK_ALERT_MSG+="⚠️ **[MÔ PHỎNG] RAM TĂNG CAO: 92%** (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)\n"
+    LARK_ALERT_MSG+="⚠️ **[MÔ PHỎNG] RAM VÀ SWAP QUÁ TẢI**\n"
+    LARK_ALERT_MSG+="* Dung lượng RAM thực tế: dùng 14.2GB / 15.0GB (94%)\n"
+    LARK_ALERT_MSG+="* Dung lượng bộ nhớ ảo SWAP: dùng 2.8GB / 4.0GB (70%)\n"
     LARK_ALERT_MSG+="*Top tiến trình chiếm dụng:*\n"
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n'"$TOP_RAM_PROCESS"
@@ -200,9 +230,24 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n\n'
 
-    # Tạo nội dung giả lập Đăng nhập SSH
+    # 2. Giả lập Ổ cứng đầy
+    DISK_MOCK="Tổng dung lượng: 300GB - Đã dùng: 285GB (95%) - Còn trống: 15GB"
+    TELE_ALERT_MSG+="💾 <b>[MÔ PHỎNG] Ổ CỨNG HỆ THỐNG GẦN ĐẦY: 95%</b>
+<code>$DISK_MOCK</code>
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    LARK_ALERT_MSG+="💾 **[MÔ PHỎNG] Ổ CỨNG HỆ THỐNG GẦN ĐẦY: 95%**\n*Chi tiết:* \`$DISK_MOCK\`\n\n"
+
+    # 3. Giả lập Băng thông Mạng đột biến
+    NET_MOCK="Tốc độ Tải xuống (Download): 45.20 MB/s | Tải lên (Upload): 3.50 MB/s"
+    TELE_ALERT_MSG+="🌐 <b>[MÔ PHỎNG] TRAFFIC BĂNG THÔNG MẠNG ĐỘT BIẾN: 45.2 MB/s</b>
+<code>$NET_MOCK</code>
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    LARK_ALERT_MSG+="🌐 **[MÔ PHỎNG] TRAFFIC BĂNG THÔNG MẠNG ĐỘT BIẾN: 45.2 MB/s**\n*Chi tiết:* \`$NET_MOCK\`\n\n"
+
+    # 4. Giả lập Đăng nhập SSH
     RECENT_LOGINS="- root from 113.161.12.34 (accepted password)\n- deployer from 113.161.12.34 (accepted publickey)"
-    
     TELE_ALERT_MSG+="🔑 <b>[MÔ PHỎNG] ĐĂNG NHẬP SSH THÀNH CÔNG MỚI:</b>
 <pre>$RECENT_LOGINS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -226,17 +271,33 @@ fi
 # 1. GIÁM SÁT TÀI NGUYÊN HỆ THỐNG THỰC TẾ (CHẠY THẬT)
 # ------------------------------------------------------------------------------
 
-# 1.1 Kiểm tra RAM
+# 1.1 Kiểm tra RAM & SWAP
 RAM_USAGE_PCT=$(free | grep Mem | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
 if [ "$RAM_USAGE_PCT" -ge "$RAM_THRESHOLD_PERCENT" ]; then
     TOP_RAM_PROCESS=$(ps -eo pid,cmd,%mem --sort=-%mem | head -n 4 | tail -n 3 | awk '{printf "PID %-7s RAM %-4s %s\n", $1, $3"%", $2}')
     
-    TELE_ALERT_MSG+="⚠️ <b>RAM TĂNG CAO: ${RAM_USAGE_PCT}%</b> (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)
-<pre>Top tiến trình ngốn RAM nhất:
+    # Chi tiết RAM
+    RAM_DETAIL=$(free -h | grep Mem | awk '{printf "Dùng %s / Tổng %s (%s)", $3, $2, "'"$RAM_USAGE_PCT"'%"}')
+    
+    TELE_ALERT_MSG+="⚠️ <b>RAM HỆ THỐNG TĂNG CAO: ${RAM_USAGE_PCT}%</b> (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)
+<b>Chi tiết RAM:</b> <code>$RAM_DETAIL</code>"
+
+    LARK_ALERT_MSG+="⚠️ **RAM HỆ THỐNG TĂNG CAO: ${RAM_USAGE_PCT}%** (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)\n"
+    LARK_ALERT_MSG+="* Chi tiết bộ nhớ: \`$RAM_DETAIL\`\n"
+
+    # Kiểm tra thêm SWAP đi kèm
+    SWAP_TOTAL=$(free | grep Swap | awk '{print $2}')
+    if [ "$SWAP_TOTAL" -gt 0 ]; then
+        SWAP_USAGE_PCT=$(free | grep Swap | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
+        SWAP_DETAIL=$(free -h | grep Swap | awk '{printf "Dùng %s / Tổng %s (%s)", $3, $2, "'"$SWAP_USAGE_PCT"'%"}')
+        TELE_ALERT_MSG+="\n<b>Bộ nhớ ảo SWAP:</b> <code>$SWAP_DETAIL</code>"
+        LARK_ALERT_MSG+="* Bộ nhớ ảo SWAP: \`$SWAP_DETAIL\`\n"
+    fi
+
+    TELE_ALERT_MSG+="\n<pre>Top tiến trình ngốn RAM nhất:
 $TOP_RAM_PROCESS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="⚠️ **RAM TĂNG CAO: ${RAM_USAGE_PCT}%** (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)\n"
     LARK_ALERT_MSG+="*Top tiến trình chiếm dụng:*\n"
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n'"$TOP_RAM_PROCESS"
@@ -245,19 +306,7 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+=$'\n\n'
 fi
 
-# 1.2 Kiểm tra SWAP
-SWAP_TOTAL=$(free | grep Swap | awk '{print $2}')
-if [ "$SWAP_TOTAL" -gt 0 ]; then
-    SWAP_USAGE_PCT=$(free | grep Swap | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
-    if [ "$SWAP_USAGE_PCT" -ge 60 ]; then
-        TELE_ALERT_MSG+="⚠️ <b>SWAP BỊ DÙNG NHIỀU: ${SWAP_USAGE_PCT}%</b> (RAM vật lý đã cạn kiệt)
-━━━━━━━━━━━━━━━━━━━━━━━━\n"
-
-        LARK_ALERT_MSG+="⚠️ **BỘ NHỚ ẢO SWAP BỊ DÙNG QUÁ MỨC: ${SWAP_USAGE_PCT}%**\n*Cảnh báo:* RAM vật lý đã cạn kiệt, hệ thống đang phải swap ảo trên SSD/HDD (gây đơ máy).\n\n"
-    fi
-fi
-
-# 1.3 Kiểm tra CPU và Load Average
+# 1.2 Kiểm tra CPU và Load Average
 CPU_USAGE_PCT=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}' | cut -d. -f1)
 LOAD_AVG=$(cat /proc/loadavg | awk '{print $1" "$2" "$3}')
 CPU_CORES=$(nproc)
@@ -266,7 +315,7 @@ LOAD_1M=$(cat /proc/loadavg | awk '{print $1}' | cut -d. -f1)
 if [ "$CPU_USAGE_PCT" -ge "$CPU_THRESHOLD_PERCENT" ] || [ "$LOAD_1M" -ge "$CPU_CORES" ]; then
     TOP_CPU_PROCESS=$(ps -eo pid,cmd,%cpu --sort=-%cpu | head -n 4 | tail -n 3 | awk '{printf "PID %-7s CPU %-4s %s\n", $1, $3"%", $2}')
 
-    TELE_ALERT_MSG+="🔥 <b>CPU/TẢI HỆ THỐNG CAO: CPU ${CPU_USAGE_PCT}%</b>
+    TELE_ALERT_MSG+="🔥 <b>CPU/TẢI HỆ THỐNG QUÁ TẢI: CPU ${CPU_USAGE_PCT}%</b>
 <b>Tải trung bình (1/5/15m):</b> <code>$LOAD_AVG</code> (Nhân CPU: $CPU_CORES)
 <pre>Top tiến trình ngốn CPU nhất:
 $TOP_CPU_PROCESS</pre>
@@ -282,16 +331,28 @@ $TOP_CPU_PROCESS</pre>
     LARK_ALERT_MSG+=$'\n\n'
 fi
 
-# 1.4 Kiểm tra Ổ cứng (Disk)
+# 1.3 Kiểm tra Ổ cứng (Disk)
 DISK_USAGE_PCT=$(df -h / | grep / | awk '{print $5}' | cut -d% -f1)
 if [ "$DISK_USAGE_PCT" -ge "$DISK_THRESHOLD_PERCENT" ]; then
     DISK_DETAIL=$(df -h / | tail -n 1 | awk '{printf "Tổng: %s - Đã dùng: %s - Trống: %s", $2, $3, $4}')
 
-    TELE_ALERT_MSG+="💾 <b>Ổ CỨNG SẮP ĐẦY: ${DISK_USAGE_PCT}%</b> (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)
+    TELE_ALERT_MSG+="💾 <b>Ổ CỨNG HỆ THỐNG SẮP ĐẦY: ${DISK_USAGE_PCT}%</b> (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)
 <code>$DISK_DETAIL</code>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="💾 **Ổ CỨNG SẮP ĐẦY: ${DISK_USAGE_PCT}%** (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)\n*Chi tiết:* \`$DISK_DETAIL\`\n\n"
+    LARK_ALERT_MSG+="💾 **Ổ CỨNG HỆ THỐNG SẮP ĐẦY: ${DISK_USAGE_PCT}%** (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)\n*Chi tiết:* \`$DISK_DETAIL\`\n\n"
+fi
+
+# 1.4 Cảnh báo Băng thông Mạng đột biến (Mới)
+# Nếu tốc độ download hoặc upload vượt quá ngưỡng MB/s
+if (( $(echo "$RX_SPEED_MB $NET_SPEED_THRESHOLD_MB" | awk '{print ($1 >= $2)}') )) || (( $(echo "$TX_SPEED_MB $NET_SPEED_THRESHOLD_MB" | awk '{print ($1 >= $2)}') )); then
+    NET_DETAIL="Tải xuống (Download): ${RX_SPEED_MB} MB/s | Tải lên (Upload): ${TX_SPEED_MB} MB/s"
+
+    TELE_ALERT_MSG+="🌐 <b>TRAFFIC BĂNG THÔNG MẠNG TĂNG ĐỘT BIẾN:</b>
+<code>$NET_DETAIL</code> (Card mạng: $NET_INTERFACE)
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    LARK_ALERT_MSG+="🌐 **TRAFFIC BĂNG THÔNG MẠNG TĂNG ĐỘT BIẾN:**\n*Chi tiết:* \`$NET_DETAIL\` (Card mạng: $NET_INTERFACE)\n\n"
 fi
 
 # 1.5 Kiểm tra các tiến trình Zombie treo
