@@ -640,10 +640,10 @@ server_setup_menu() {
         echo -e "       (Quét lỗ hổng bảo mật, cấu hình UFW, bật Fail2Ban, tắt SSH Password)"
         echo -e "  [3] 📊 ${BOLD}Real-time VPS Resource Dashboard (sys_monitor.sh)${NC}"
         echo -e "       (Theo dõi realtime CPU, RAM, Disk, Traffic qua Terminal)"
-        echo -e "  [4] 🔔 ${BOLD}Telegram Bot Alerts Configuration (sys_monitor.sh config)${NC}"
-        echo -e "       (Cấu hình bot Telegram gửi tin nhắn cảnh báo tự động khi VPS quá tải)"
-        echo -e "  [5] ⚡ ${BOLD}Run Instant Check & Send Telegram Alert Test${NC}"
-        echo -e "       (Chạy test khẩn cấp hệ thống giám sát & gửi tin test)"
+        echo -e "  [4] 🔔 ${BOLD}Cài đặt & Cấu hình Bot Cảnh báo (Telegram / Lark Suite)${NC}"
+        echo -e "       (Quét tài nguyên đột biến, an ninh, phát hiện malware và gửi Alert tự động)"
+        echo -e "  [5] ⚡ ${BOLD}Chạy kiểm tra tức thì & Gửi thông báo test (Instant Check)${NC}"
+        echo -e "       (Quét nhanh tài nguyên & an ninh VPS ngay bây giờ)"
         echo -e "  [0] Quay lại Menu chính"
         echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
         
@@ -668,16 +668,18 @@ server_setup_menu() {
                 else echo -e "${FAIL} Không tìm thấy sys_monitor.sh"; fi
                 ;;
             4)
-                if [ -f "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" config
-                else echo -e "${FAIL} Không tìm thấy sys_monitor.sh"; fi
-                read -r -p "👉 Nhấn Enter..." _
+                if [ -f "$SCRIPT_DIR/scripts/monitor/install.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/monitor/install.sh"
+                else echo -e "${FAIL} Không tìm thấy install.sh giám sát tại scripts/monitor/"; fi
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
                 ;;
             5)
-                if [ -f "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" ]; then
-                    bash "$SCRIPT_DIR/scripts/setup/sys_monitor.sh" check
-                else echo -e "${FAIL} Không tìm thấy sys_monitor.sh"; fi
-                read -r -p "👉 Nhấn Enter..." _
+                if [ -f "$SCRIPT_DIR/scripts/monitor/system_monitor.sh" ]; then
+                    echo -e "\n🔍 Đang chạy quét kiểm tra tài nguyên và an ninh VPS..."
+                    bash "$SCRIPT_DIR/scripts/monitor/system_monitor.sh"
+                    echo -e "${OK} Hoàn thành quét. Nếu có bất thường hoặc lỗi phát sinh, thông báo đã được gửi đi."
+                else echo -e "${FAIL} Không tìm thấy file system_monitor.sh tại scripts/monitor/"; fi
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
                 ;;
             *)
                 echo -e "${FAIL} Lựa chọn không hợp lệ."

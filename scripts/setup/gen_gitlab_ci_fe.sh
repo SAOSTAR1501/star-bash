@@ -128,6 +128,7 @@ build-${br}:
     - if: \$CI_COMMIT_BRANCH == \"${br}\"
   variables:
     ENV_FILE: \$ENV_LOCAL_${br_upper}
+    GIT_CLEAN_FLAGS: -ffdx -e node_modules/
   script:
     - echo \"==> Khởi tạo môi trường cho chi nhánh ${br}...\"
     - cp \"\$ENV_FILE\" .env.local
