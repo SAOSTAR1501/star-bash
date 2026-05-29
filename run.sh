@@ -85,8 +85,8 @@ show_smart_dashboard() {
     print_border_line "  [3] Khởi tạo Backend Project (BE) [4] Quản lý Dự án (Project Manager)"
     print_border_line "  [5] Kiểm tra bảo mật VPS (Audit)  [6] Cấu hình User VPS Deployer SSH"
     print_border_line "  [7] Cài đặt GitLab Runner an toàn  [8] Cấu hình WARP & GitLab Connect"
-    print_border_line "  [9] Other Tools & VPS Monitor      [00] Cẩm nang Hướng dẫn (Guidelines)"
-    print_border_line "  [0] Thoát chương trình"
+    print_border_line "  [9] Other Tools & VPS Monitor      [10] Cập nhật Star-Bash (Update)"
+    print_border_line "  [00] Cẩm nang Hướng dẫn (Guidelines)  [0] Thoát chương trình"
     echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
 }
 
@@ -926,6 +926,35 @@ dispatch_choice() {
             prompt_next "warp"
             ;;
         9)  other_tools_menu ;;
+        10)
+            echo -e "\n🔄 ĐANG TIẾN HÀNH CẬP NHẬT STAR-BASH LÊN PHIÊN BẢN MỚI NHẤT..."
+            echo -e "------------------------------------------------------------------------"
+            echo -e "${INFO} Đang dọn dẹp các thay đổi cục bộ phát sinh trên VPS..."
+            
+            # Khắc phục lỗi gộp mã nguồn bị bẩn
+            git -C "$SCRIPT_DIR" reset --hard
+            git -C "$SCRIPT_DIR" clean -fd
+            
+            echo -e "${INFO} Đang kiểm tra cấu hình kho lưu trữ..."
+            if git -C "$SCRIPT_DIR" remote | grep -q "origin"; then
+                git -C "$SCRIPT_DIR" remote set-url origin https://github.com/SAOSTAR1501/star-bash.git
+            else
+                git -C "$SCRIPT_DIR" remote add origin https://github.com/SAOSTAR1501/star-bash.git
+            fi
+            
+            echo -e "${INFO} Đang kéo mã nguồn mới nhất từ GitHub..."
+            if git -C "$SCRIPT_DIR" pull origin main; then
+                # Phân lại quyền thực thi cho các tệp script shell
+                chmod -R +x "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/scripts/**/*.sh 2>/dev/null || true
+                echo -e "\n${OK} ${GREEN}CẬP NHẬT STAR-BASH THÀNH CÔNG!${NC}"
+                echo -e "💡 Hệ thống sẽ tự động khởi động lại Bảng điều khiển để áp dụng cập nhật..."
+                sleep 2
+                exec bash "$SCRIPT_DIR/run.sh"
+            else
+                echo -e "\n${FAIL} Cập nhật Star-Bash thất bại. Vui lòng kiểm tra kết nối mạng."
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
+            fi
+            ;;
         0)
             echo -e "\n${BOLD}${GREEN}Cảm ơn đã dùng Star-Bash Suite. Tạm biệt!${NC}\n"
             exit 0
@@ -943,7 +972,7 @@ main_loop() {
     while true; do
         if [ -z "$pending" ]; then
             show_smart_dashboard
-            read -r -p $'\n👉 Nhập lựa chọn của bạn [0-9, 00]: ' pending
+            read -r -p $'\n👉 Nhập lựa chọn của bạn [0-10, 00]: ' pending
             pending="${pending// /}" # trim whitespace
         fi
         local current="$pending"
