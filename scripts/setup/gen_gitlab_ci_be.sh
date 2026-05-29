@@ -90,6 +90,7 @@ stages:
 EOF
 
 for br in "${BRANCHES[@]}"; do
+    br_upper=$(echo "$br" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr '/' '_')
     cat <<EOF >> "$target_ci"
 
 # --- DEPLOY JOB CHO CHI NHÁNH: ${br} ---
@@ -98,6 +99,9 @@ deploy-${br}:
   image: alpine:latest
   rules:
     - if: \$CI_COMMIT_BRANCH == "${br}"
+  variables:
+    ENV_FILE: \$ENV_LOCAL_${br_upper}
+    ENV_DOCKER_FILE: \$ENV_DOCKER_${br_upper}
   before_script:
     - apk add --no-cache openssh-client
     - mkdir -p ~/.ssh
@@ -105,8 +109,15 @@ deploy-${br}:
     - echo "\$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    - echo "==> Đang đăng nhập VPS để thực hiện Git Pull và khởi chạy dịch vụ..."
-    - ssh deployer@\$VPS_IP "cd /home/${domain} && git checkout ${br} && git pull && bash deploy.sh"
+    - echo "==> Đang đăng nhập VPS để thực hiện Git Pull và cấu hình môi trường..."
+    - ssh deployer@\$VPS_IP "
+        cd /home/${domain} &&
+        git checkout ${br} &&
+        git pull &&
+        echo \"\$ENV_FILE\" > .env &&
+        echo \"\$ENV_DOCKER_FILE\" > .env.docker &&
+        bash deploy.sh
+      "
     - echo "✅ Triển khai thành công trên nhánh ${br}."
 EOF
 done

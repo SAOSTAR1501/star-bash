@@ -331,9 +331,11 @@ build-${br}:
     - if: \$CI_COMMIT_BRANCH == "${br}"
   variables:
     ENV_FILE: \$ENV_LOCAL_${br_upper}
+    ENV_DOCKER_FILE: \$ENV_DOCKER_${br_upper}
   script:
     - echo "==> Khởi tạo môi trường cho chi nhánh ${br}..."
-    - cp "\$ENV_FILE" .env.local
+    - cp "\$ENV_FILE" .env
+    - cp "\$ENV_DOCKER_FILE" .env.docker
   artifacts:
     name: "${br}-build-\$CI_COMMIT_REF_SLUG"
     expire_in: 3 days
