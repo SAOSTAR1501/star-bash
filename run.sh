@@ -221,9 +221,10 @@ project_detail_menu() {
         echo -e "  [8] 🔑 Sửa phân quyền thư mục (Cấp quyền cho deployer)"
         if [ "$type" = "BE" ]; then
             echo -e "  [9] 🐳 Khởi tạo / Ghi đè tệp scripts/deploy.sh (Chỉ dành cho BE)"
+            echo -e "  [10] 🔑 Hiển thị Deployer Public Key (Thêm vào GitLab Deploy Keys - Chỉ dành cho BE)"
             echo -e "  [0] Quay lại danh sách dự án"
             echo -e "${BOLD}${CYAN}========================================================================${NC}"
-            read -r -p "👉 Nhập lựa chọn quản trị [0-9]: " action_idx
+            read -r -p "👉 Nhập lựa chọn quản trị [0-10]: " action_idx
         else
             echo -e "  [0] Quay lại danh sách dự án"
             echo -e "${BOLD}${CYAN}========================================================================${NC}"
@@ -569,6 +570,36 @@ EOF
                     echo -e " 🔹 Khuyên dùng: Commit và push file này lên Git để đồng bộ lâu dài."
                 fi
                 read -r -p "\n👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            10)
+                if [ "$type" != "BE" ]; then
+                    echo -e "${FAIL} Tùy chọn này chỉ khả dụng đối với dự án Backend (Docker)."
+                else
+                    clear
+                    echo -e "${BOLD}${CYAN}========================================================================${NC}"
+                    echo -e " 🔑  ${BOLD}DEPLOYER PUBLIC KEY (THÊM VÀO DEPLOY KEYS CỦA GITLAB)${NC}"
+                    echo -e "${BOLD}${CYAN}========================================================================${NC}"
+                    echo -e " Hãy copy toàn bộ đoạn mã bên dưới và thêm vào ${BOLD}Deploy Keys${NC} của dự án."
+                    echo -e " tại mục: ${BOLD}GitLab Repository -> Settings -> Repository -> Deploy keys${NC}"
+                    echo -e "$DASH\n"
+                    
+                    local pub_key_path=""
+                    if [ -f "/home/deployer/.ssh/id_rsa_gitlab.pub" ]; then
+                        pub_key_path="/home/deployer/.ssh/id_rsa_gitlab.pub"
+                    elif [ -f "/home/deployer/.ssh/id_ed25519_gitlab_local.pub" ]; then
+                        pub_key_path="/home/deployer/.ssh/id_ed25519_gitlab_local.pub"
+                    fi
+
+                    if [ -n "$pub_key_path" ] && [ -f "$pub_key_path" ]; then
+                        cat "$pub_key_path"
+                        echo -e "\n$DASH"
+                        echo -e " 💡 Mẹo: Tích chọn ${BOLD}'Write access allowed'${NC} nếu bạn muốn VPS có quyền push code."
+                    else
+                        echo -e "${FAIL} Không tìm thấy file key Public của deployer. Vui lòng chạy mục [6] ở Menu chính để khởi tạo."
+                    fi
+                    echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
+                fi
+                read -r -p "👉 Nhấn Enter để quay lại..." _
                 ;;
             *)
                 echo -e "${FAIL} Lựa chọn không hợp lệ."
