@@ -57,6 +57,28 @@ else
     echo -e "${TICK} Đã tạo thành công tài khoản '${DEPLOY_USER}'."
 fi
 
+# Tự động gán user deployer vào nhóm quyền docker để tránh lỗi permission denied khi deploy Backend
+if command -v docker &>/dev/null; then
+    # Tạo group docker nếu chưa tồn tại
+    if ! getent group docker &>/dev/null; then
+        groupadd docker
+    fi
+    # Gán deployer vào group docker
+    usermod -aG docker "${DEPLOY_USER}"
+    
+    # Cấp trực tiếp quyền sở hữu socket cho group docker để tránh lỗi permission denied ngay lập tức
+    if [ -S "/var/run/docker.sock" ]; then
+        chown root:docker /var/run/docker.sock
+        chmod 660 /var/run/docker.sock
+    fi
+    
+    # Khởi động lại dịch vụ docker
+    systemctl restart docker 2>/dev/null || true
+    echo -e "${TICK} Đã phân quyền kết nối an toàn Docker Socket (/var/run/docker.sock) cho '${DEPLOY_USER}'."
+else
+    echo -e "${INFO} Docker chưa được cài đặt trên VPS. Quyền Docker cho deployer sẽ tự động khả dụng khi bạn cài Docker ở setup.sh."
+fi
+
 # 2. Tạo cấu trúc thư mục Deploy cho dự án Next.js
 echo -e "\n${BOLD}${WHITE}==> 2. Khởi tạo cấu trúc thư mục lưu trữ ứng dụng${NC}"
 mkdir -p "${STAGING_DIR}" "${PRODUCTION_DIR}"
@@ -134,6 +156,29 @@ if command -v pm2 &>/dev/null; then
 else
     echo -e "${WARN} PM2 chưa được cài đặt. Khi cài đặt node/pm2 ở setup.sh, deployer sẽ chạy được."
 fi
+
+# 6. Làm mới phiên đăng nhập & Cập nhật toàn bộ các dịch vụ liên quan
+echo -e "\n${BOLD}${WHITE}==> 6. Làm mới phiên SSH, phân quyền thư mục và làm sạch Service${NC}"
+
+# Chuyển quyền sở hữu thư mục deploy chính /var/www về cho deployer
+if [ -d "/var/www" ]; then
+    chown -R ${DEPLOY_USER}:${DEPLOY_USER} /var/www
+    chmod -R 755 /var/www
+fi
+
+# Chuyển quyền sở hữu thư mục home về cho deployer
+chown -R ${DEPLOY_USER}:${DEPLOY_USER} "$DEPLOY_HOME"
+
+# Khởi động lại SSH daemon để giải phóng các session SSH đang treo của deployer (ép buộc nạp nhóm quyền mới)
+echo -e "${INFO} Đang khởi động lại dịch vụ SSH Daemon..."
+systemctl restart sshd || systemctl restart ssh || true
+
+# Khởi động lại GitLab Runner để làm mới các agent
+if systemctl is-active --quiet gitlab-runner; then
+    echo -e "${INFO} Đang làm mới dịch vụ GitLab Runner..."
+    systemctl restart gitlab-runner || true
+fi
+echo -e "${TICK} Đồng bộ và nạp lại toàn bộ quyền sở hữu, dịch vụ Docker/SSH/Runner thành công."
 
 # Lấy Private Key để hiển thị cho Admin copy dán vào GitLab
 PRIVATE_KEY_CONTENT=$(cat "$SSH_KEY_FILE")
