@@ -90,7 +90,19 @@ if [ -f "/root/.ssh/config" ]; then
     # Sao chép thêm các Private/Public keys của root nếu config SSH có tham chiếu tới
     cp /root/.ssh/id_ed25519* "${DEPLOY_HOME}/.ssh/" 2>/dev/null || true
     cp /root/.ssh/id_rsa* "${DEPLOY_HOME}/.ssh/" 2>/dev/null || true
-    echo -e "${TICK} Đã đồng bộ thành công cấu hình SSH định tuyến (config & keys) từ root sang deployer."
+    echo -e "${TICK} Đã đồng bộ cấu hình SSH định tuyến từ root sang deployer."
+fi
+
+# Tự động ghi đè hoặc chèn thêm cấu hình bypass Host Key verification để tránh lỗi 'Host key verification failed' khi git pull
+local deployer_ssh_config="${DEPLOY_HOME}/.ssh/config"
+if [ ! -f "$deployer_ssh_config" ]; then
+    touch "$deployer_ssh_config"
+fi
+
+# Chèn cấu hình bypass bảo mật an toàn cho các kết nối SSH từ deployer
+if ! grep -q "StrictHostKeyChecking no" "$deployer_ssh_config"; then
+    echo -e "\nHost *\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" >> "$deployer_ssh_config"
+    echo -e "${TICK} Đã cấu hình tự động tin cậy Host Keys (StrictHostKeyChecking bypass) cho deployer."
 fi
 
 chown -R ${DEPLOY_USER}:${DEPLOY_USER} "${DEPLOY_HOME}/.ssh"
