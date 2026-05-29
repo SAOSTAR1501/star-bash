@@ -269,7 +269,22 @@ project_detail_menu() {
                 echo -e "\n🦊 CẤU HÌNH / CẬP NHẬT GITLAB CI/CD CHO DỰ ÁN..."
                 echo -e "------------------------------------------------------------------------"
                 if [ "$type" = "FE" ]; then
-                    local target_ci="${pdir}/.gitlab-ci.yml"
+                    if [ -f "$SCRIPT_DIR/setup/gen_gitlab_ci_fe.sh" ]; then
+                        bash "$SCRIPT_DIR/setup/gen_gitlab_ci_fe.sh" "$domain" "$pdir"
+                    else
+                        echo -e "${FAIL} Không tìm thấy file script setup/gen_gitlab_ci_fe.sh"
+                    fi
+                else
+                    if [ -f "$SCRIPT_DIR/setup/gen_gitlab_ci_be.sh" ]; then
+                        bash "$SCRIPT_DIR/setup/gen_gitlab_ci_be.sh" "$domain" "$pdir"
+                    else
+                        echo -e "${FAIL} Không tìm thấy file script setup/gen_gitlab_ci_be.sh"
+                    fi
+                fi
+                read -r -p "\n👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            4_old)
+                local target_ci="${pdir}/.gitlab-ci.yml"
                     echo -e "\n🦊 CẤU HÌNH PIPELINE CI/CD ĐA CHI NHÁNH CHO FRONTEND Next.js..."
                     echo -e "------------------------------------------------------------------------"
                     
