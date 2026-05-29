@@ -2,9 +2,9 @@
 # ==============================================================================
 # Script Name   : install.sh
 # Description   : Premium, State-aware, Menu-based Interactive Installer & Configurator 
-#                 for Star-Bash System Monitor Alert Suite.
+#                 for Star-Bash System Monitor Alert Suite. (State-Memory Optimized)
 # Author        : Antigravity AI
-# Version       : 3.1.0
+# Version       : 3.2.0
 # ==============================================================================
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
@@ -25,13 +25,7 @@ MONITOR_SCRIPT="${SCRIPT_DIR}/system_monitor.sh"
 # Khởi tạo thư mục cấu hình toàn cục
 mkdir -p "$GLOBAL_CONFIG_DIR"
 
-# Nếu file chưa tồn tại, copy từ mẫu example
-if [ ! -f "$CONFIG_FILE" ]; then
-    if [ -f "${SCRIPT_DIR}/config.env.example" ]; then
-        cp "${SCRIPT_DIR}/config.env.example" "$CONFIG_FILE"
-    else
-        # Tự sinh cấu hình mặc định nếu thiếu file mẫu
-        cat <<EOF > "$CONFIG_FILE"
+# Nạp cấu hình mặc định ban đầu
 ENABLE_TELEGRAM=false
 ENABLE_LARK=false
 TELEGRAM_BOT_TOKEN=""
@@ -42,8 +36,10 @@ CPU_THRESHOLD_PERCENT=90
 DISK_THRESHOLD_PERCENT=90
 SCAN_SUSPICIOUS_PATHS=true
 ENABLE_SSH_MONITOR=true
-EOF
-    fi
+
+# Đọc cấu hình hiện tại từ file nếu tồn tại
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
 fi
 
 # Yêu cầu cài đặt jq nếu chưa có
@@ -54,6 +50,22 @@ fi
 
 # Phân quyền thực thi
 chmod +x "$MONITOR_SCRIPT"
+
+# Hàm lưu toàn bộ biến cấu hình hiện tại xuống file an toàn (Ghi đè sạch sẽ)
+save_config_to_file() {
+    cat <<EOF > "$CONFIG_FILE"
+ENABLE_TELEGRAM=$ENABLE_TELEGRAM
+ENABLE_LARK=$ENABLE_LARK
+TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
+TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
+LARK_WEBHOOK_URL="$LARK_WEBHOOK_URL"
+RAM_THRESHOLD_PERCENT=$RAM_THRESHOLD_PERCENT
+CPU_THRESHOLD_PERCENT=$CPU_THRESHOLD_PERCENT
+DISK_THRESHOLD_PERCENT=$DISK_THRESHOLD_PERCENT
+SCAN_SUSPICIOUS_PATHS=$SCAN_SUSPICIOUS_PATHS
+ENABLE_SSH_MONITOR=$ENABLE_SSH_MONITOR
+EOF
+}
 
 # Hàm che giấu Token nhạy cảm
 mask_token() {
@@ -73,9 +85,6 @@ mask_token() {
 # Menu quản lý cấu hình thông minh
 interactive_config_menu() {
     while true; do
-        # Đọc trực tiếp cấu hình hiện tại để hiển thị Real-time
-        source "$CONFIG_FILE"
-
         clear
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
         echo -e "      ⚙️   ${BOLD}${WHITE}TRÌNH QUẢN LÝ & CẤU HÌNH BOT GIÁM SÁT VPS STAR-BASH${NC}   ⚙️"
@@ -117,6 +126,9 @@ interactive_config_menu() {
         read -r -p "👉 Nhập lựa chọn của bạn muốn điều chỉnh [0-9, T]: " choice
         case "$choice" in
             0)
+                # Lưu cấu hình xuống file trước khi thoát
+                save_config_to_file
+                
                 # Thiết lập Cronjob chạy tự động mỗi 30 phút (Đã dọn dẹp các cron cũ của file này)
                 local CRON_JOB="*/30 * * * * bash ${MONITOR_SCRIPT} > /dev/null 2>&1"
                 
@@ -127,84 +139,97 @@ interactive_config_menu() {
                 (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
                 
                 echo -e "\n${OK} Lưu cấu hình thành công! Cronjob định kỳ 30 phút đã hoạt động."
-                sleep 2.5
+                sleep 2
                 break
                 ;;
             1)
                 if [ "$ENABLE_TELEGRAM" = "true" ]; then
-                    sed -i 's/ENABLE_TELEGRAM=.*/ENABLE_TELEGRAM=false/' "$CONFIG_FILE"
+                    ENABLE_TELEGRAM=false
                 else
                     if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ "$TELEGRAM_BOT_TOKEN" = "your_telegram_bot_token_here" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
                         echo -e "${WARN} Bạn chưa cấu hình Token Telegram. Hãy nhập cấu hình!"
                         read -r -p "👉 Nhập Telegram Bot Token: " t_token
-                        sed -i "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=\"$t_token\"|" "$CONFIG_FILE"
+                        TELEGRAM_BOT_TOKEN="$t_token"
                         read -r -p "👉 Nhập Telegram Chat ID: " t_chat
-                        sed -i "s|TELEGRAM_CHAT_ID=.*|TELEGRAM_CHAT_ID=\"$t_chat\"|" "$CONFIG_FILE"
+                        TELEGRAM_CHAT_ID="$t_chat"
                     fi
-                    sed -i 's/ENABLE_TELEGRAM=.*/ENABLE_TELEGRAM=true/' "$CONFIG_FILE"
+                    ENABLE_TELEGRAM=true
                 fi
+                save_config_to_file
                 ;;
             2)
                 read -r -p "👉 Nhập Telegram Bot Token mới: " t_token
-                sed -i "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=\"$t_token\"|" "$CONFIG_FILE"
+                TELEGRAM_BOT_TOKEN="$t_token"
                 read -r -p "👉 Nhập Telegram Chat ID mới: " t_chat
-                sed -i "s|TELEGRAM_CHAT_ID=.*|TELEGRAM_CHAT_ID=\"$t_chat\"|" "$CONFIG_FILE"
-                sed -i 's/ENABLE_TELEGRAM=.*/ENABLE_TELEGRAM=true/' "$CONFIG_FILE"
+                TELEGRAM_CHAT_ID="$t_chat"
+                ENABLE_TELEGRAM=true
+                save_config_to_file
                 ;;
             3)
                 if [ "$ENABLE_LARK" = "true" ]; then
-                    sed -i 's/ENABLE_LARK=.*/ENABLE_LARK=false/' "$CONFIG_FILE"
+                    ENABLE_LARK=false
                 else
                     if [ -z "$LARK_WEBHOOK_URL" ] || [ "$LARK_WEBHOOK_URL" = "https://open.larksuite.com/open-apis/bot/v2/hook/your_lark_webhook_uuid_here" ]; then
                         echo -e "${WARN} Bạn chưa cấu hình Webhook Lark. Hãy nhập cấu hình!"
                         read -r -p "👉 Nhập Lark Suite Webhook URL: " l_url
-                        sed -i "s|LARK_WEBHOOK_URL=.*|LARK_WEBHOOK_URL=\"$l_url\"|" "$CONFIG_FILE"
+                        LARK_WEBHOOK_URL="$l_url"
                     fi
-                    sed -i 's/ENABLE_LARK=.*/ENABLE_LARK=true/' "$CONFIG_FILE"
+                    ENABLE_LARK=true
                 fi
+                save_config_to_file
                 ;;
             4)
                 read -r -p "👉 Nhập Lark Suite Webhook URL mới: " l_url
-                sed -i "s|LARK_WEBHOOK_URL=.*|LARK_WEBHOOK_URL=\"$l_url\"|" "$CONFIG_FILE"
-                sed -i 's/ENABLE_LARK=.*/ENABLE_LARK=true/' "$CONFIG_FILE"
+                LARK_WEBHOOK_URL="$l_url"
+                ENABLE_LARK=true
+                save_config_to_file
                 ;;
             5)
                 read -r -p "👉 Cài đặt ngưỡng cảnh báo RAM mới (%) [10-95]: " r_th
                 if [[ "$r_th" =~ ^[0-9]+$ ]] && [ "$r_th" -ge 10 ] && [ "$r_th" -le 95 ]; then
-                    sed -i "s/RAM_THRESHOLD_PERCENT=.*/RAM_THRESHOLD_PERCENT=$r_th/" "$CONFIG_FILE"
+                    RAM_THRESHOLD_PERCENT=$r_th
+                    save_config_to_file
                 fi
                 ;;
             6)
                 read -r -p "👉 Cài đặt ngưỡng cảnh báo CPU mới (%) [10-95]: " c_th
                 if [[ "$c_th" =~ ^[0-9]+$ ]] && [ "$c_th" -ge 10 ] && [ "$c_th" -le 95 ]; then
-                    sed -i "s/CPU_THRESHOLD_PERCENT=.*/CPU_THRESHOLD_PERCENT=$c_th/" "$CONFIG_FILE"
+                    CPU_THRESHOLD_PERCENT=$c_th
+                    save_config_to_file
                 fi
                 ;;
             7)
                 read -r -p "👉 Cài đặt ngưỡng cảnh báo Ổ cứng mới (%) [10-95]: " d_th
                 if [[ "$d_th" =~ ^[0-9]+$ ]] && [ "$d_th" -ge 10 ] && [ "$d_th" -le 95 ]; then
-                    sed -i "s/DISK_THRESHOLD_PERCENT=.*/DISK_THRESHOLD_PERCENT=$d_th/" "$CONFIG_FILE"
+                    DISK_THRESHOLD_PERCENT=$d_th
+                    save_config_to_file
                 fi
                 ;;
             8)
                 if [ "$SCAN_SUSPICIOUS_PATHS" = "true" ]; then
-                    sed -i 's/SCAN_SUSPICIOUS_PATHS=.*/SCAN_SUSPICIOUS_PATHS=false/' "$CONFIG_FILE"
+                    SCAN_SUSPICIOUS_PATHS=false
                 else
-                    sed -i 's/SCAN_SUSPICIOUS_PATHS=.*/SCAN_SUSPICIOUS_PATHS=true/' "$CONFIG_FILE"
+                    SCAN_SUSPICIOUS_PATHS=true
                 fi
+                save_config_to_file
                 ;;
             9)
                 if [ "$ENABLE_SSH_MONITOR" = "true" ]; then
-                    sed -i 's/ENABLE_SSH_MONITOR=.*/ENABLE_SSH_MONITOR=false/' "$CONFIG_FILE"
+                    ENABLE_SSH_MONITOR=false
                 else
-                    sed -i 's/ENABLE_SSH_MONITOR=.*/ENABLE_SSH_MONITOR=true/' "$CONFIG_FILE"
+                    ENABLE_SSH_MONITOR=true
                 fi
+                save_config_to_file
                 ;;
             [tT])
-                echo -e "\n🔍 ${BOLD}Đang chạy quét nóng kiểm tra & Gửi Alert test...${NC}"
-                # Ép buộc gửi thông báo test bằng cách hạ ngưỡng tạm thời trong phiên chạy này
-                RAM_THRESHOLD_PERCENT=10 CPU_THRESHOLD_PERCENT=10 SCAN_SUSPICIOUS_PATHS=true ENABLE_SSH_MONITOR=true bash "$MONITOR_SCRIPT"
-                echo -e "${OK} Đã thực thi xong kịch bản test. Hãy kiểm tra điện thoại/tin nhắn của bạn!"
+                # Lưu cấu hình xuống file tạm thời trước khi test để system_monitor.sh đọc được chính xác
+                save_config_to_file
+                echo -e "\n🔍 ${BOLD}Đang chạy thử nghiệm liên kết và Gửi thông báo Test...${NC}"
+                echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                bash "$MONITOR_SCRIPT" --test
+                echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo -e "\n${OK} Đã chạy xong kịch bản Test."
+                echo -e "💡 Mẹo: Xem phản hồi API (Response) ở trên để kiểm tra Token / Webhook có chuẩn hay không."
                 read -r -p "👉 Nhấn Enter để tiếp tục..." _
                 ;;
             *)
@@ -215,5 +240,5 @@ interactive_config_menu() {
     done
 }
 
-# Khởi động trình menu
+# Khởi chạy menu quản trị
 interactive_config_menu

@@ -4,7 +4,7 @@
 # Description   : Enterprise VPS monitor (RAM, SWAP, CPU, Load Avg, Disk, Connections, 
 #                 Zombie Procs, Security & Malware scans) with Telegram & Lark Card.
 # Author        : Antigravity AI
-# Version       : 3.0.0
+# Version       : 3.2.0
 # ==============================================================================
 
 # Thiết lập đường dẫn cấu hình toàn cục an toàn ngoài thư mục dự án
@@ -28,6 +28,12 @@ SERVER_IP=$(curl -s https://api.ipify.org || hostname -I | awk '{print $1}')
 HOSTNAME=$(hostname)
 DATE_TIME=$(date '+%Y-%m-%d %H:%M:%S')
 UPTIME_VAL=$(uptime -p 2>/dev/null || echo "N/A")
+
+# Khai báo biến chế độ Test
+TEST_MODE=false
+if [ "${1:-}" = "--test" ] || [ "${1:-}" = "-t" ]; then
+    TEST_MODE=true
+fi
 
 # Các biến thu thập lỗi
 TELE_ALERT_MSG=""
@@ -53,9 +59,18 @@ $html_body"
         payload=$(jq -n --arg chat_id "$TELEGRAM_CHAT_ID" --arg text "$full_msg" --arg parse_mode "HTML" \
             '{chat_id: $chat_id, text: $text, parse_mode: $parse_mode}')
         
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -H "Content-Type: application/json" \
-            -d "$payload" > /dev/null
+        if [ "$TEST_MODE" = "true" ]; then
+            echo -e "\n📤 [Test] Đang gửi thông báo test tới Telegram..."
+            local response
+            response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                -H "Content-Type: application/json" \
+                -d "$payload")
+            echo -e "💬 [Telegram Response]: $response"
+        else
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                -H "Content-Type: application/json" \
+                -d "$payload" > /dev/null
+        fi
     fi
 }
 
@@ -125,14 +140,63 @@ send_lark_card() {
             }
         }"
 
-        curl -s -X POST "$LARK_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "$payload" > /dev/null
+        if [ "$TEST_MODE" = "true" ]; then
+            echo -e "\n📤 [Test] Đang gửi thông báo test tới Lark Suite..."
+            local response
+            response=$(curl -s -X POST "$LARK_WEBHOOK_URL" \
+                -H "Content-Type: application/json" \
+                -d "$payload")
+            echo -e "💬 [Lark Suite Response]: $response"
+        else
+            curl -s -X POST "$LARK_WEBHOOK_URL" \
+                -H "Content-Type: application/json" \
+                -d "$payload" > /dev/null
+        fi
     fi
 }
 
 # ------------------------------------------------------------------------------
-# 1. GIÁM SÁT TÀI NGUYÊN HỆ THỐNG
+# CHẾ ĐỘ CHẠY THỬ (TEST MODE) - Gửi ngay tin nhắn giả lập
+# ------------------------------------------------------------------------------
+if [ "$TEST_MODE" = "true" ]; then
+    echo -e "🧪 [Chế độ chạy thử] Khởi chạy mô phỏng gửi cảnh báo..."
+    
+    # Tạo nội dung giả lập RAM quá tải
+    TOP_RAM_PROCESS="PID 226394  RAM 34.5%  /usr/bin/node (NextJS Build)\nPID 5996    RAM 12.1%  /usr/bin/dockerd"
+    TELE_ALERT_MSG+="⚠️ <b>[MÔ PHỎNG] RAM TĂNG CAO: 92%</b> (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)
+<pre>Top tiến trình ngốn RAM nhất:
+$TOP_RAM_PROCESS</pre>
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    LARK_ALERT_ELEMENTS+="{
+        \"tag\": \"div\",
+        \"text\": {
+            \"tag\": \"lark_md\",
+            \"content\": \"⚠️ **[MÔ PHỎNG] RAM TĂNG CAO: 92%** (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)\\n\\n**Top tiến trình chiếm dụng:**\\n\`\`\`\\n$TOP_RAM_PROCESS\\n\`\`\`\"
+        }
+    },"
+
+    # Tạo nội dung giả lập Đăng nhập SSH
+    RECENT_LOGINS="- root from 113.161.12.34 (accepted password)\n- deployer from 113.161.12.34 (accepted publickey)"
+    TELE_ALERT_MSG+="🔑 <b>[MÔ PHỎNG] ĐĂNG NHẬP SSH THÀNH CÔNG MỚI:</b>
+<pre>$RECENT_LOGINS</pre>
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    LARK_ALERT_ELEMENTS+="{
+        \"tag\": \"div\",
+        \"text\": {
+            \"tag\": \"lark_md\",
+            \"content\": \"🔑 **[MÔ PHỎNG] ĐĂNG NHẬP SSH THÀNH CÔNG MỚI:**\\n\`\`\`\\n$RECENT_LOGINS\\n\`\`\`\"
+        }
+    },"
+
+    # Thực thi gửi tin nhắn và thoát
+    TELE_ALERT_MSG=$(echo -e "$TELE_ALERT_MSG" | sed 's/━━━━━━━━━━━━━━━━━━━━━━━━\\n$//')
+    send_telegram "$TELE_ALERT_MSG"
+    send_lark_card
+    exit 0
+fi
+
+# ------------------------------------------------------------------------------
+# 1. GIÁM SÁT TÀI NGUYÊN HỆ THỐNG THỰC TẾ (CHẠY THẬT)
 # ------------------------------------------------------------------------------
 
 # 1.1 Kiểm tra RAM
@@ -154,11 +218,10 @@ $TOP_RAM_PROCESS</pre>
     },"
 fi
 
-# 1.2 Kiểm tra SWAP (Mới - Bảo vệ bộ nhớ ảo)
+# 1.2 Kiểm tra SWAP
 SWAP_TOTAL=$(free | grep Swap | awk '{print $2}')
 if [ "$SWAP_TOTAL" -gt 0 ]; then
     SWAP_USAGE_PCT=$(free | grep Swap | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
-    # Cảnh báo nếu Swap dùng quá 60%
     if [ "$SWAP_USAGE_PCT" -ge 60 ]; then
         TELE_ALERT_MSG+="⚠️ <b>SWAP BỊ DÙNG NHIỀU: ${SWAP_USAGE_PCT}%</b> (RAM vật lý đã cạn kiệt)
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -173,13 +236,12 @@ if [ "$SWAP_TOTAL" -gt 0 ]; then
     fi
 fi
 
-# 1.3 Kiểm tra CPU và Load Average (Mới - Tải hệ thống trung bình)
+# 1.3 Kiểm tra CPU và Load Average
 CPU_USAGE_PCT=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}' | cut -d. -f1)
-LOAD_AVG=$(cat /proc/loadavg | awk '{print $1" "$2" "$3}') # 1m, 5m, 15m load
+LOAD_AVG=$(cat /proc/loadavg | awk '{print $1" "$2" "$3}')
 CPU_CORES=$(nproc)
 LOAD_1M=$(cat /proc/loadavg | awk '{print $1}' | cut -d. -f1)
 
-# Cảnh báo khi CPU quá tải HOẶC Load average 1 phút lớn hơn số nhân CPU (Hệ thống nghẽn)
 if [ "$CPU_USAGE_PCT" -ge "$CPU_THRESHOLD_PERCENT" ] || [ "$LOAD_1M" -ge "$CPU_CORES" ]; then
     TOP_CPU_PROCESS=$(ps -eo pid,cmd,%cpu --sort=-%cpu | head -n 4 | tail -n 3 | awk '{printf "PID %-7s CPU %-4s %s\n", $1, $3"%", $2}')
 
@@ -216,7 +278,7 @@ if [ "$DISK_USAGE_PCT" -ge "$DISK_THRESHOLD_PERCENT" ]; then
     },"
 fi
 
-# 1.5 Kiểm tra các tiến trình Zombie treo (Mới)
+# 1.5 Kiểm tra các tiến trình Zombie treo
 ZOMBIE_COUNT=$(ps -eo state | grep -c 'Z' || echo "0")
 if [ "$ZOMBIE_COUNT" -gt 3 ]; then
     ZOMBIE_LIST=$(ps -eo pid,ppid,stat,cmd | awk '$3 ~ /Z/ {print "PID: "$1" - Parent: "$2" - "$4}' | head -n 5)
@@ -233,12 +295,11 @@ if [ "$ZOMBIE_COUNT" -gt 3 ]; then
     },"
 fi
 
-# 1.6 Giám sát Số lượng Kết nối Mạng (Mới - Phát hiện DDoS/Quá tải traffic)
+# 1.6 Giám sát Số lượng Kết nối Mạng
 CONN_TOTAL=$(ss -ant | wc -l)
 CONN_ESTABLISHED=$(ss -ant state established | wc -l)
 CONN_SYN_RECV=$(ss -ant state syn-recv | wc -l)
 
-# Cảnh báo nếu số lượng kết nối đồng thời đột ngột tăng quá cao (ví dụ > 1000)
 if [ "$CONN_TOTAL" -gt 1500 ] || [ "$CONN_SYN_RECV" -gt 30 ]; then
     NET_ALERT="Tổng kết nối: $CONN_TOTAL | Kết nối hoạt động (ESTABLISHED): $CONN_ESTABLISHED | SYN_RECV (Nghi ngờ DDoS): $CONN_SYN_RECV"
     
@@ -262,14 +323,12 @@ MALWARE_TELE=""
 MALWARE_LARK=""
 
 if [ "$SCAN_SUSPICIOUS_PATHS" = "true" ]; then
-    # Tìm tiến trình chạy từ thư mục tạm
     SUSPICIOUS_PROCS=$(ls -l /proc/*/exe 2>/dev/null | grep -E '\(/tmp|/dev/shm|/var/tmp\)' | awk '{print $9" -> "$11}' | head -n 5 || true)
     if [ -n "$SUSPICIOUS_PROCS" ]; then
         MALWARE_TELE+="⚠️ <b>Phát hiện thực thi từ thư mục tạm (Nghi ngờ Malware):</b>\n<pre>$SUSPICIOUS_PROCS</pre>\n"
         MALWARE_LARK+="⚠️ **Phát hiện thực thi từ thư mục tạm (Nghi ngờ Malware):**\\n\`\`\`\\n$SUSPICIOUS_PROCS\\n\`\`\`\\n"
     fi
     
-    # Phát hiện tiến trình CPU > 85% lạ
     HEAVY_PROCS=$(ps -eo pid,cmd,%cpu --sort=-%cpu | awk '$3 > 85.0 {printf "PID %-7s CPU %-4s %s\n", $1, $3"%", $2}' | head -n 5)
     if [ -n "$HEAVY_PROCS" ]; then
         if ! echo "$HEAVY_PROCS" | grep -qE "(node|next|npm|webpack)"; then
