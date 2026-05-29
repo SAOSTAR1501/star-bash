@@ -4,7 +4,7 @@
 # Description   : Enterprise VPS monitor (RAM, SWAP, CPU, Load Avg, Disk, Connections, 
 #                 Zombie Procs, Security & Malware scans) with Telegram & Lark Card.
 # Author        : Antigravity AI
-# Version       : 3.3.0
+# Version       : 3.4.0
 # ==============================================================================
 
 # Thiết lập đường dẫn cấu hình toàn cục an toàn ngoài thư mục dự án
@@ -75,36 +75,91 @@ $html_body"
 }
 
 # ------------------------------------------------------------------------------
-# HÀM GỬI THÔNG BÁO LARK SUITE (Sử dụng Rich Text post chuẩn hóa bằng jq)
+# HÀM GỬI THÔNG BÁO LARK SUITE (Thẻ Interactive Card cao cấp giống Gitlab)
 # ------------------------------------------------------------------------------
 send_lark_card() {
     local markdown_body="$1"
     if [ "$ENABLE_LARK" = "true" ] && [ -n "$LARK_WEBHOOK_URL" ]; then
-        # Tiêu đề và thông tin chung dạng Lark Markdown
-        local header_info="**🖥️ Máy chủ:** $HOSTNAME  |  **🌐 Địa chỉ IP:** $SERVER_IP\n**⏱️ Uptime:** $UPTIME_VAL  |  **📅 Thời gian quét:** $DATE_TIME\n----------------------------------------\n\n"
-        local full_markdown="${header_info}${markdown_body}"
-
-        # Đóng gói JSON an toàn bằng jq để tránh lỗi 9499 Bad Request
+        
+        # Đóng gói JSON Interactive Card siêu chuẩn bằng jq
         local payload
         payload=$(jq -n \
-            --arg title "🚨 CẢNH BÁO VPS: $HOSTNAME ($SERVER_IP)" \
-            --arg text "$full_markdown" \
+            --arg hostname "$HOSTNAME" \
+            --arg ip "$SERVER_IP" \
+            --arg uptime "$UPTIME_VAL" \
+            --arg time "$DATE_TIME" \
+            --arg content "$markdown_body" \
             '{
-                msg_type: "post",
-                content: {
-                    post: {
-                        zh_cn: {
-                            title: $title,
-                            content: [
-                                [
-                                    {
-                                        tag: "text",
-                                        text: $text
+                msg_type: "interactive",
+                card: {
+                    config: {
+                        wide_screen_mode: true,
+                        enable_forward: true
+                    },
+                    header: {
+                        template: "red",
+                        title: {
+                            tag: "plain_text",
+                            content: ("🚨 CẢNH BÁO VPS: " + $hostname + " (" + $ip + ")")
+                        }
+                    },
+                    elements: [
+                        {
+                            tag: "div",
+                            fields: [
+                                {
+                                    is_short: true,
+                                    text: {
+                                        tag: "lark_md",
+                                        content: ("**🖥️ Máy chủ:**\n" + $hostname)
                                     }
-                                ]
+                                },
+                                {
+                                    is_short: true,
+                                    text: {
+                                        tag: "lark_md",
+                                        content: ("**🌐 Địa chỉ IP:**\n" + $ip)
+                                    }
+                                },
+                                {
+                                    is_short: true,
+                                    text: {
+                                        tag: "lark_md",
+                                        content: ("**⏱️ Uptime:**\n" + $uptime)
+                                    }
+                                },
+                                {
+                                    is_short: true,
+                                    text: {
+                                        tag: "lark_md",
+                                        content: ("**📅 Thời gian quét:**\n" + $time)
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            tag: "hr"
+                        },
+                        {
+                            tag: "div",
+                            text: {
+                                tag: "lark_md",
+                                content: $content
+                            }
+                        },
+                        {
+                            tag: "hr"
+                        },
+                        {
+                            tag: "note",
+                            elements: [
+                                {
+                                    tag: "plain_text",
+                                    content: "💡 DevOps Command Center - Star-Bash Suite"
+                                }
                             ]
                         }
-                    }
+                    ]
                 }
             }')
 
@@ -143,7 +198,7 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+=$'\n'"$TOP_RAM_PROCESS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n----------------------------------------\n\n'
+    LARK_ALERT_MSG+=$'\n\n'
 
     # Tạo nội dung giả lập Đăng nhập SSH
     RECENT_LOGINS="- root from 113.161.12.34 (accepted password)\n- deployer from 113.161.12.34 (accepted publickey)"
@@ -157,11 +212,10 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+=$'\n'"$RECENT_LOGINS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n----------------------------------------\n\n'
 
     # Thực thi gửi tin nhắn và thoát
     TELE_ALERT_MSG=$(echo -e "$TELE_ALERT_MSG" | sed 's/━━━━━━━━━━━━━━━━━━━━━━━━\\n$//')
-    LARK_ALERT_MSG=$(echo -e "$LARK_ALERT_MSG" | sed 's/----------------------------------------\\n\\n$//')
+    LARK_ALERT_MSG=$(echo -e "$LARK_ALERT_MSG")
     
     send_telegram "$TELE_ALERT_MSG"
     send_lark_card "$LARK_ALERT_MSG"
@@ -188,7 +242,7 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+=$'\n'"$TOP_RAM_PROCESS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n----------------------------------------\n\n'
+    LARK_ALERT_MSG+=$'\n\n'
 fi
 
 # 1.2 Kiểm tra SWAP
@@ -199,7 +253,7 @@ if [ "$SWAP_TOTAL" -gt 0 ]; then
         TELE_ALERT_MSG+="⚠️ <b>SWAP BỊ DÙNG NHIỀU: ${SWAP_USAGE_PCT}%</b> (RAM vật lý đã cạn kiệt)
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-        LARK_ALERT_MSG+="⚠️ **BỘ NHỚ ẢO SWAP BỊ DÙNG QUÁ MỨC: ${SWAP_USAGE_PCT}%**\n*Cảnh báo:* RAM vật lý đã cạn kiệt, hệ thống đang phải swap ảo trên SSD/HDD (gây đơ máy).\n----------------------------------------\n\n"
+        LARK_ALERT_MSG+="⚠️ **BỘ NHỚ ẢO SWAP BỊ DÙNG QUÁ MỨC: ${SWAP_USAGE_PCT}%**\n*Cảnh báo:* RAM vật lý đã cạn kiệt, hệ thống đang phải swap ảo trên SSD/HDD (gây đơ máy).\n\n"
     fi
 fi
 
@@ -225,7 +279,7 @@ $TOP_CPU_PROCESS</pre>
     LARK_ALERT_MSG+=$'\n'"$TOP_CPU_PROCESS"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n----------------------------------------\n\n'
+    LARK_ALERT_MSG+=$'\n\n'
 fi
 
 # 1.4 Kiểm tra Ổ cứng (Disk)
@@ -237,7 +291,7 @@ if [ "$DISK_USAGE_PCT" -ge "$DISK_THRESHOLD_PERCENT" ]; then
 <code>$DISK_DETAIL</code>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="💾 **Ổ CỨNG SẮP ĐẦY: ${DISK_USAGE_PCT}%** (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)\n*Chi tiết:* \`$DISK_DETAIL\`\n----------------------------------------\n\n"
+    LARK_ALERT_MSG+="💾 **Ổ CỨNG SẮP ĐẦY: ${DISK_USAGE_PCT}%** (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)\n*Chi tiết:* \`$DISK_DETAIL\`\n\n"
 fi
 
 # 1.5 Kiểm tra các tiến trình Zombie treo
@@ -253,7 +307,7 @@ if [ "$ZOMBIE_COUNT" -gt 3 ]; then
     LARK_ALERT_MSG+=$'\n'"$ZOMBIE_LIST"
     LARK_ALERT_MSG+=$'\n'
     LARK_ALERT_MSG+='```'
-    LARK_ALERT_MSG+=$'\n----------------------------------------\n\n'
+    LARK_ALERT_MSG+=$'\n\n'
 fi
 
 # 1.6 Giám sát Số lượng Kết nối Mạng
@@ -268,7 +322,7 @@ if [ "$CONN_TOTAL" -gt 1500 ] || [ "$CONN_SYN_RECV" -gt 30 ]; then
 <code>$NET_ALERT</code>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="🌐 **CẢNH BÁO KẾT NỐI MẠNG ĐỘT BIẾN:**\n\`$NET_ALERT\`\n----------------------------------------\n\n"
+    LARK_ALERT_MSG+="🌐 **CẢNH BÁO KẾT NỐI MẠNG ĐỘT BIẾN:**\n\`$NET_ALERT\`\n\n"
 fi
 
 # ------------------------------------------------------------------------------
@@ -309,7 +363,7 @@ if [ -n "$MALWARE_TELE" ]; then
     TELE_ALERT_MSG+="☣️ <b>CẢNH BÁO AN NINH & MALWARE</b>
 $MALWARE_TELE━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="☣️ **CẢNH BÁO AN NINH & MALWARE**\n$MALWARE_LARK----------------------------------------\n\n"
+    LARK_ALERT_MSG+="☣️ **CẢNH BÁO AN NINH & MALWARE**\n$MALWARE_LARK\n"
 fi
 
 # ------------------------------------------------------------------------------
@@ -347,7 +401,7 @@ if [ "$ENABLE_SSH_MONITOR" = "true" ]; then
             LARK_ALERT_MSG+=$'\n'"$RECENT_LOGINS"
             LARK_ALERT_MSG+=$'\n'
             LARK_ALERT_MSG+='```'
-            LARK_ALERT_MSG+=$'\n----------------------------------------\n\n'
+            LARK_ALERT_MSG+=$'\n'
         fi
     fi
 fi
@@ -361,6 +415,5 @@ if [ -n "$TELE_ALERT_MSG" ]; then
 fi
 
 if [ -n "$LARK_ALERT_MSG" ]; then
-    LARK_ALERT_MSG=$(echo -e "$LARK_ALERT_MSG" | sed 's/----------------------------------------\\n\\n$//')
     send_lark_card "$LARK_ALERT_MSG"
 fi
