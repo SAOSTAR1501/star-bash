@@ -9,7 +9,7 @@ domain="$1"
 pdir="$2"
 target_ci="${pdir}/.gitlab-ci.yml"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd)"
-template="${SCRIPT_DIR}/.gitlab-ci-be.yml.example"
+template="${SCRIPT_DIR}/scripts/setup/templates/.gitlab-ci-be.yml.example"
 
 # Colors & Formatting inside sourced or executed script
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
@@ -34,7 +34,7 @@ done
 
 if [ "$ci_method" = "1" ]; then
     if [ ! -f "$template" ]; then
-        echo -e "${FAIL} Không tìm thấy tệp mẫu .gitlab-ci-be.yml.example tại thư mục gốc."
+        echo -e "${FAIL} Không tìm thấy tệp mẫu .gitlab-ci-be.yml.example tại thư mục templates."
         exit 1
     fi
     
