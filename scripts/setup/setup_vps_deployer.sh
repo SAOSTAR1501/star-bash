@@ -94,7 +94,7 @@ if [ -f "/root/.ssh/config" ]; then
 fi
 
 # Tự động ghi đè hoặc chèn thêm cấu hình bypass Host Key verification để tránh lỗi 'Host key verification failed' khi git pull
-local deployer_ssh_config="${DEPLOY_HOME}/.ssh/config"
+deployer_ssh_config="${DEPLOY_HOME}/.ssh/config"
 if [ ! -f "$deployer_ssh_config" ]; then
     touch "$deployer_ssh_config"
 fi
