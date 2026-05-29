@@ -1,11 +1,12 @@
 #!/bin/bash
 # ==============================================================================
 # Script Name   : system_monitor.sh
-# Description   : Enterprise VPS monitor (RAM, SWAP, CPU, Load Avg, Disk, Connections, 
-#                 Zombie Procs, Real-time Network Bandwidth Traffic, Security & Malware scans) 
-#                 with High-end Telegram & Lark Card alert formatting.
+# Description   : Enterprise VPS Security & System Health Monitor (RAM, SWAP, CPU, 
+#                 Load Avg, Disk, Connections, Network Bandwidth Traffic, Firewall, 
+#                 SSH Audit, failed SSH logins brute-force detect, Malware & Privilege scans)
+#                 with High-end Telegram & Lark Card formatting.
 # Author        : Antigravity AI
-# Version       : 4.0.0
+# Version       : 5.0.0
 # ==============================================================================
 
 # Thiết lập đường dẫn cấu hình toàn cục an toàn ngoài thư mục dự án
@@ -40,7 +41,7 @@ fi
 TELE_ALERT_MSG=""
 LARK_ALERT_MSG=""
 
-# Ngưỡng băng thông cảnh báo mặc định nếu chưa khai báo (Đơn vị: MB/s)
+# Ngưỡng băng thông cảnh báo mặc định (MB/s)
 NET_SPEED_THRESHOLD_MB=30
 
 # ------------------------------------------------------------------------------
@@ -49,7 +50,7 @@ NET_SPEED_THRESHOLD_MB=30
 send_telegram() {
     local html_body="$1"
     if [ "$ENABLE_TELEGRAM" = "true" ] && [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-        local full_msg="🚨 <b>CẢNH BÁO HỆ THỐNG VPS KHẨN CẤP</b>
+        local full_msg="🚨 <b>CẢNH BÁO AN NINH & HỆ THỐNG VPS KHẨN CẤP</b>
 <b>━━━━━━━━━━━━━━━━━━━━━━━━</b>
 <b>🖥️ Host:</b> <code>$HOSTNAME</code>
 <b>🌐 IP:</b> <code>$SERVER_IP</code>
@@ -103,7 +104,7 @@ send_lark_card() {
                         template: "red",
                         title: {
                             tag: "plain_text",
-                            content: ("🚨 CẢNH BÁO VPS: " + $hostname + " (" + $ip + ")")
+                            content: ("🚨 CẢNH BÁO HỆ THỐNG VPS: " + $hostname)
                         }
                     },
                     elements: [
@@ -158,7 +159,7 @@ send_lark_card() {
                             elements: [
                                 {
                                     tag: "plain_text",
-                                    content: "💡 DevOps Command Center - Star-Bash Suite"
+                                    content: "💡 Security Audit & System Health Monitor - Star-Bash DevOps Suite"
                                 }
                             ]
                         }
@@ -182,13 +183,11 @@ send_lark_card() {
 }
 
 # ------------------------------------------------------------------------------
-# CẢM BIẾN ĐO TRAFFIC MẠNG THỜI GIAN THỰC (REAL-TIME BANDWIDTH MONITOR)
+# CẢM BIẾN ĐO TRAFFIC MẠNG THỜI GIAN THỰC
 # ------------------------------------------------------------------------------
-# Lấy card mạng chính đang hoạt động để internet
 NET_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n 1)
 [ -z "$NET_INTERFACE" ] && NET_INTERFACE="eth0"
 
-# Đọc lượng băng thông Bytes nhận và gửi tại thời điểm t1
 get_net_bytes() {
     local rx tx
     rx=$(cat /proc/net/dev | grep "$NET_INTERFACE" | awk '{print $2}')
@@ -196,12 +195,10 @@ get_net_bytes() {
     echo "$rx $tx"
 }
 
-# Tính toán tốc độ truyền tải
 read -r RX1 TX1 <<< "$(get_net_bytes)"
-sleep 2 # Đo lường trong 2 giây để lấy trung bình
+sleep 2
 read -r RX2 TX2 <<< "$(get_net_bytes)"
 
-# Tính tốc độ MB/s
 RX_SPEED_MB=$(echo "$RX1 $RX2" | awk '{printf "%.2f", ($2-$1)/1024/1024/2}')
 TX_SPEED_MB=$(echo "$TX1 $TX2" | awk '{printf "%.2f", ($2-$1)/1024/1024/2}')
 
@@ -211,7 +208,7 @@ TX_SPEED_MB=$(echo "$TX1 $TX2" | awk '{printf "%.2f", ($2-$1)/1024/1024/2}')
 if [ "$TEST_MODE" = "true" ]; then
     echo -e "🧪 [Chế độ chạy thử] Khởi chạy mô phỏng gửi cảnh báo..."
     
-    # 1. Giả lập RAM & Disk quá tải
+    # 1. Giả lập tài nguyên quá tải
     TOP_RAM_PROCESS="PID 226394  RAM 34.5%  /usr/bin/node (NextJS Build)\nPID 5996    RAM 12.1%  /usr/bin/dockerd"
     TELE_ALERT_MSG+="⚠️ <b>[MÔ PHỎNG] RAM VÀ SWAP QUÁ TẢI</b>
 <b>Dung lượng RAM thực tế:</b> dùng 14.2GB / 15.0GB (94%)
@@ -230,23 +227,36 @@ $TOP_RAM_PROCESS</pre>
     LARK_ALERT_MSG+='```'
     LARK_ALERT_MSG+=$'\n\n'
 
-    # 2. Giả lập Ổ cứng đầy
-    DISK_MOCK="Tổng dung lượng: 300GB - Đã dùng: 285GB (95%) - Còn trống: 15GB"
-    TELE_ALERT_MSG+="💾 <b>[MÔ PHỎNG] Ổ CỨNG HỆ THỐNG GẦN ĐẦY: 95%</b>
-<code>$DISK_MOCK</code>
+    # 2. Giả lập Cảnh báo Tường lửa & SSH (Từ Security Audit)
+    TELE_ALERT_MSG+="🛡️ <b>[MÔ PHỎNG] CẢNH BÁO TƯỜNG LỬA & BẢO MẬT SSH:</b>
+<b>Cảnh báo Tường lửa:</b> 🔴 <b>UFW Firewall đang bị TẮT (INACTIVE)</b>
+<b>Cảnh báo SSH Port:</b> ⚠️ SSH đang mở ở cổng mặc định <b>22</b>
+<b>Cảnh báo Root login:</b> 🔴 Cho phép root đăng nhập trực tiếp qua mật khẩu!
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="💾 **[MÔ PHỎNG] Ổ CỨNG HỆ THỐNG GẦN ĐẦY: 95%**\n*Chi tiết:* \`$DISK_MOCK\`\n\n"
+    LARK_ALERT_MSG+="🛡️ **[MÔ PHỎNG] CẢNH BÁO TƯỜNG LỬA & BẢO MẬT SSH:**\n"
+    LARK_ALERT_MSG+="* Cảnh báo Tường lửa: 🔴 **UFW Firewall đang bị TẮT (INACTIVE)**\n"
+    LARK_ALERT_MSG+="* Cảnh báo SSH Port: ⚠️ SSH đang mở ở cổng mặc định **22**\n"
+    LARK_ALERT_MSG+="* Cảnh báo Root login: 🔴 Cho phép root đăng nhập trực tiếp qua mật khẩu!\n\n"
 
-    # 3. Giả lập Băng thông Mạng đột biến
-    NET_MOCK="Tốc độ Tải xuống (Download): 45.20 MB/s | Tải lên (Upload): 3.50 MB/s"
-    TELE_ALERT_MSG+="🌐 <b>[MÔ PHỎNG] TRAFFIC BĂNG THÔNG MẠNG ĐỘT BIẾN: 45.2 MB/s</b>
-<code>$NET_MOCK</code>
+    # 3. Giả lập Brute-force SSH (Từ Security Audit)
+    IP_ATTACKS="- 112.198.23.45 (Philippines) : 1,450 lần\n- 45.123.45.67 (China)       : 820 lần"
+    TELE_ALERT_MSG+="🕵️ <b>[MÔ PHỎNG] PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):</b>
+Tổng số lượt SSH đăng nhập thất bại trong 30 phút: <b>2,270 lần</b>
+<pre>Top 2 địa chỉ IP tấn công dồn dập nhất:
+$IP_ATTACKS</pre>
 ━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    LARK_ALERT_MSG+="🌐 **[MÔ PHỎNG] TRAFFIC BĂNG THÔNG MẠNG ĐỘT BIẾN: 45.2 MB/s**\n*Chi tiết:* \`$NET_MOCK\`\n\n"
+    LARK_ALERT_MSG+="🕵️ **[MÔ PHỎNG] PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):**\n"
+    LARK_ALERT_MSG+="Tổng số lượt SSH đăng nhập thất bại trong 30 phút: **2,270 lần**\n"
+    LARK_ALERT_MSG+="*Top địa chỉ IP tấn công dồn dập nhất:*\n"
+    LARK_ALERT_MSG+='```'
+    LARK_ALERT_MSG+=$'\n'"$IP_ATTACKS"
+    LARK_ALERT_MSG+=$'\n'
+    LARK_ALERT_MSG+='```'
+    LARK_ALERT_MSG+=$'\n\n'
 
-    # 4. Giả lập Đăng nhập SSH
+    # 4. Giả lập Đăng nhập SSH thành công
     RECENT_LOGINS="- root from 113.161.12.34 (accepted password)\n- deployer from 113.161.12.34 (accepted publickey)"
     TELE_ALERT_MSG+="🔑 <b>[MÔ PHỎNG] ĐĂNG NHẬP SSH THÀNH CÔNG MỚI:</b>
 <pre>$RECENT_LOGINS</pre>
@@ -275,8 +285,6 @@ fi
 RAM_USAGE_PCT=$(free | grep Mem | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
 if [ "$RAM_USAGE_PCT" -ge "$RAM_THRESHOLD_PERCENT" ]; then
     TOP_RAM_PROCESS=$(ps -eo pid,cmd,%mem --sort=-%mem | head -n 4 | tail -n 3 | awk '{printf "PID %-7s RAM %-4s %s\n", $1, $3"%", $2}')
-    
-    # Chi tiết RAM
     RAM_DETAIL=$(free -h | grep Mem | awk '{printf "Dùng %s / Tổng %s (%s)", $3, $2, "'"$RAM_USAGE_PCT"'%"}')
     
     TELE_ALERT_MSG+="⚠️ <b>RAM HỆ THỐNG TĂNG CAO: ${RAM_USAGE_PCT}%</b> (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)
@@ -285,7 +293,6 @@ if [ "$RAM_USAGE_PCT" -ge "$RAM_THRESHOLD_PERCENT" ]; then
     LARK_ALERT_MSG+="⚠️ **RAM HỆ THỐNG TĂNG CAO: ${RAM_USAGE_PCT}%** (Ngưỡng: ${RAM_THRESHOLD_PERCENT}%)\n"
     LARK_ALERT_MSG+="* Chi tiết bộ nhớ: \`$RAM_DETAIL\`\n"
 
-    # Kiểm tra thêm SWAP đi kèm
     SWAP_TOTAL=$(free | grep Swap | awk '{print $2}')
     if [ "$SWAP_TOTAL" -gt 0 ]; then
         SWAP_USAGE_PCT=$(free | grep Swap | awk '{print $3/$2 * 100.0}' | cut -d. -f1)
@@ -343,8 +350,7 @@ if [ "$DISK_USAGE_PCT" -ge "$DISK_THRESHOLD_PERCENT" ]; then
     LARK_ALERT_MSG+="💾 **Ổ CỨNG HỆ THỐNG SẮP ĐẦY: ${DISK_USAGE_PCT}%** (Ngưỡng: ${DISK_THRESHOLD_PERCENT}%)\n*Chi tiết:* \`$DISK_DETAIL\`\n\n"
 fi
 
-# 1.4 Cảnh báo Băng thông Mạng đột biến (Mới)
-# Nếu tốc độ download hoặc upload vượt quá ngưỡng MB/s
+# 1.4 Cảnh báo Băng thông Mạng đột biến
 if (( $(echo "$RX_SPEED_MB $NET_SPEED_THRESHOLD_MB" | awk '{print ($1 >= $2)}') )) || (( $(echo "$TX_SPEED_MB $NET_SPEED_THRESHOLD_MB" | awk '{print ($1 >= $2)}') )); then
     NET_DETAIL="Tải xuống (Download): ${RX_SPEED_MB} MB/s | Tải lên (Upload): ${TX_SPEED_MB} MB/s"
 
@@ -387,7 +393,111 @@ if [ "$CONN_TOTAL" -gt 1500 ] || [ "$CONN_SYN_RECV" -gt 30 ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 2. PHÁT HIỆN AN NINH & CẢNH BÁO MALWARE
+# 2. KIỂM TRA BẢO MẬT & TƯỜNG LỬA (MỚI - TỪ SECURITY AUDIT)
+# ------------------------------------------------------------------------------
+SEC_TELE=""
+SEC_LARK=""
+
+# 2.1 Kiểm tra trạng thái Firewall
+FIREWALL_OK=true
+if command -v ufw &>/dev/null; then
+    if ! ufw status | grep -q "Status: active"; then
+        FIREWALL_OK=false
+        SEC_TELE+="🔴 <b>Tường lửa UFW Firewall đang bị TẮT (INACTIVE)</b>\n"
+        SEC_LARK+="* Tường lửa UFW Firewall đang bị 🔴 **TẮT (INACTIVE)**\n"
+    fi
+fi
+
+# 2.2 Kiểm tra SSH cấu hình mặc định nguy hiểm
+sshd_config="/etc/ssh/sshd_config"
+if [ -f "$sshd_config" ]; then
+    ssh_port=$(grep -E "^#?Port " "$sshd_config" | awk '{print $2}' | tail -n 1)
+    [ -z "$ssh_port" ] && ssh_port="22"
+    
+    permit_root=$(grep -E "^#?PermitRootLogin " "$sshd_config" | awk '{print $2}' | tail -n 1)
+    [ -z "$permit_root" ] && permit_root="yes"
+    
+    if [ "$ssh_port" = "22" ]; then
+        SEC_TELE+="⚠️ Cổng SSH đang mở ở cổng mặc định <b>22</b> (Dễ bị brute-force)\n"
+        SEC_LARK+="* Cổng SSH đang mở ở cổng mặc định **22** (Nguy cơ bị brute-force cao)\n"
+    fi
+    
+    if [ "$permit_root" = "yes" ]; then
+        SEC_TELE+="🔴 Cho phép root đăng nhập trực tiếp qua SSH mật khẩu!\n"
+        SEC_LARK+="* Cho phép root đăng nhập trực tiếp qua 🔴 **SSH mật khẩu (Cực kỳ nguy hiểm)**\n"
+    fi
+fi
+
+# 2.3 Quét lỗi leo thang quyền NOPASSWD trong Sudoers
+if [ -f /etc/sudoers ]; then
+    # Lọc trừ ra deployer hợp pháp
+    nopasswd_users=$(grep -r -i "NOPASSWD" /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '^#' | grep -v "deployer" || true)
+    if [ -n "$nopasswd_users" ]; then
+        SEC_TELE+="🔴 <b>Phát hiện tài khoản NOPASSWD lạ trong Sudoers:</b>\n<pre>$nopasswd_users</pre>\n"
+        SEC_LARK+="* Phát hiện tài khoản leo thang quyền 🔴 **NOPASSWD lạ trong Sudoers**:\n\`\`\`\n$nopasswd_users\n\`\`\`\n"
+    fi
+fi
+
+if [ -n "$SEC_TELE" ]; then
+    TELE_ALERT_MSG+="🛡️ <b>CẢNH BÁO LỖ HỔNG AN NINH & TƯỜNG LỬA:</b>
+$SEC_TELE━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+    LARK_ALERT_MSG+="🛡️ **CẢNH BÁO LỖ HỔNG AN NINH & TƯỜNG LỬA:**\n$SEC_LARK\n"
+fi
+
+# ------------------------------------------------------------------------------
+# 3. PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU BRUTE-FORCE SSH (MỚI - TỪ SECURITY AUDIT)
+# ------------------------------------------------------------------------------
+AUTH_LOG="/var/log/auth.log"
+[ ! -f "$AUTH_LOG" ] && AUTH_LOG="/var/log/secure"
+
+if [ -f "$AUTH_LOG" ]; then
+    # Đếm số lần đăng nhập thất bại trong 30 phút qua
+    CURRENT_TIME_EPOCH=$(date +%s)
+    FAILED_ATTEMPTS=""
+    FAILED_COUNT=0
+    
+    # Quét logs SSH thất bại gần nhất
+    SSH_FAILS=$(grep -i "Failed password" "$AUTH_LOG" | tail -n 200 || true)
+    
+    while read -r line; do
+        [ -z "$line" ] && continue
+        log_date_str=$(echo "$line" | awk '{print $1" "$2" "$3}')
+        log_epoch=$(date -d "$log_date_str" +%s 2>/dev/null)
+        if [ -n "$log_epoch" ]; then
+            diff=$((CURRENT_TIME_EPOCH - log_epoch))
+            # Quét trong 30 phút qua (1800 giây)
+            if [ "$diff" -ge 0 ] && [ "$diff" -le 1800 ]; then
+                FAILED_ATTEMPTS+="$line\n"
+                FAILED_COUNT=$((FAILED_COUNT + 1))
+            fi
+        fi
+    done <<< "$SSH_FAILS"
+    
+    # Nếu số lần login lỗi vượt quá 30 lần trong 30 phút, phát cảnh báo tấn công dò mật khẩu
+    if [ "$FAILED_COUNT" -ge 30 ]; then
+        # Thống kê top 3 IP đang dò mật khẩu
+        TOP_OFFENDERS=$(echo -e "$FAILED_ATTEMPTS" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | sort | uniq -c | sort -nr | head -n 3 | awk '{printf "IP %-15s : %s lần\n", $2, $1}')
+        
+        TELE_ALERT_MSG+="🕵️ <b>PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):</b>
+Tổng số lượt đăng nhập SSH thất bại trong 30 phút: <b>$FAILED_COUNT lần</b>
+<pre>Top địa chỉ IP tấn công dồn dập nhất:
+$TOP_OFFENDERS</pre>
+━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+        LARK_ALERT_MSG+="🕵️ **PHÁT HIỆN TẤN CÔNG DÒ MẬT KHẨU (BRUTE-FORCE):**\n"
+        LARK_ALERT_MSG+="Tổng số lượt đăng nhập SSH thất bại trong 30 phút: **$FAILED_COUNT lần**\n"
+        LARK_ALERT_MSG+="*Top địa chỉ IP tấn công dồn dập nhất:*\n"
+        LARK_ALERT_MSG+='```'
+        LARK_ALERT_MSG+=$'\n'"$TOP_OFFENDERS"
+        LARK_ALERT_MSG+=$'\n'
+        LARK_ALERT_MSG+='```'
+        LARK_ALERT_MSG+=$'\n\n'
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 4. PHÁT HIỆN AN NINH & CẢNH BÁO MALWARE (DỊCH CHUYỂN & NÂNG CẤP)
 # ------------------------------------------------------------------------------
 MALWARE_TELE=""
 MALWARE_LARK=""
@@ -428,12 +538,9 @@ $MALWARE_TELE━━━━━━━━━━━━━━━━━━━━━━�
 fi
 
 # ------------------------------------------------------------------------------
-# 3. GIÁM SÁT SSH LOGINS (ĐĂNG NHẬP MỚI)
+# 5. GIÁM SÁT SSH LOGINS (ĐĂNG NHẬP MỚI THÀNH CÔNG)
 # ------------------------------------------------------------------------------
 if [ "$ENABLE_SSH_MONITOR" = "true" ]; then
-    AUTH_LOG="/var/log/auth.log"
-    [ ! -f "$AUTH_LOG" ] && AUTH_LOG="/var/log/secure"
-    
     if [ -f "$AUTH_LOG" ]; then
         SSH_LOGINS=$(tail -n 50 "$AUTH_LOG" | grep -E "Accepted (publickey|password)" || true)
         RECENT_LOGINS=""
