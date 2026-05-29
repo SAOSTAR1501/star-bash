@@ -198,7 +198,7 @@ setup_ssh_for_user() {
     else
         cat <<EOF >> "$config_path"
 
-Host gitlab-local
+Host gitlab-local 192.168.1.138
   HostName 192.168.1.138
   User git
   Port 2222

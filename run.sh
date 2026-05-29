@@ -584,10 +584,10 @@ EOF
                     echo -e "$DASH\n"
                     
                     local pub_key_path=""
-                    if [ -f "/home/deployer/.ssh/id_rsa_gitlab.pub" ]; then
-                        pub_key_path="/home/deployer/.ssh/id_rsa_gitlab.pub"
-                    elif [ -f "/home/deployer/.ssh/id_ed25519_gitlab_local.pub" ]; then
+                    if [ -f "/home/deployer/.ssh/id_ed25519_gitlab_local.pub" ]; then
                         pub_key_path="/home/deployer/.ssh/id_ed25519_gitlab_local.pub"
+                    elif [ -f "/home/deployer/.ssh/id_rsa_gitlab.pub" ]; then
+                        pub_key_path="/home/deployer/.ssh/id_rsa_gitlab.pub"
                     fi
 
                     if [ -n "$pub_key_path" ] && [ -f "$pub_key_path" ]; then
