@@ -17,15 +17,66 @@ OK="${GREEN}[✔]${NC}"; FAIL="${RED}[✘]${NC}"; WARN="${YELLOW}[⚠]${NC}"; IN
 echo -e "\n🦊 CẤU HÌNH PIPELINE CI/CD ĐA CHI NHÁNH CHO FRONTEND Next.js..."
 echo -e "------------------------------------------------------------------------"
 
-read -p "👉 Nhập các chi nhánh muốn cấu hình CI/CD, cách nhau bằng dấu phẩy (Ví dụ: develop,main): " branch_input
-branch_input=$(echo "$branch_input" | tr -d '[:space:]')
+# Lấy danh sách các chi nhánh remote từ repository
+echo -e "${INFO} Đang quét các chi nhánh từ remote git (origin)..."
+git -C "$pdir" fetch --all --prune &>/dev/null || true
 
-if [ -z "$branch_input" ]; then
-    echo -e "${FAIL} Danh sách chi nhánh không được để trống."
-    exit 1
+# Tạo mảng chứa danh sách các nhánh remote (bỏ origin/HEAD và xoá tiền tố origin/)
+mapfile -t git_branches < <(git -C "$pdir" branch -r | grep -v 'origin/HEAD' | sed 's/^[[:space:]]*origin\///' | sed 's/^[[:space:]]*//' | sort -u)
+
+if [ ${#git_branches[@]} -eq 0 ] || [ -z "${git_branches[0]}" ]; then
+    echo -e "${WARN} Không tìm thấy chi nhánh remote nào hoặc thư mục không phải là git repo."
+    read -p "👉 Nhập thủ công các chi nhánh muốn cấu hình (Ví dụ: develop,main): " branch_input
+    branch_input=$(echo "$branch_input" | tr -d '[:space:]')
+    if [ -z "$branch_input" ]; then
+        echo -e "${FAIL} Danh sách chi nhánh không được để trống."
+        exit 1
+    fi
+    IFS=',' read -r -a BRANCHES <<< "$branch_input"
+else
+    echo -e "\n📋 Danh sách các chi nhánh remote tìm thấy:"
+    for i in "${!git_branches[@]}"; do
+        echo -e "  [$(($i + 1))] ${git_branches[$i]}"
+    done
+    echo -e "  [m] Nhập thủ công tên chi nhánh khác..."
+    
+    while true; do
+        read -p "👉 Chọn số tương ứng với các chi nhánh, cách nhau bằng dấu phẩy (Ví dụ: 1,2) hoặc chọn [m]: " branch_selection
+        branch_selection=$(echo "$branch_selection" | tr -d '[:space:]')
+        
+        if [ "$branch_selection" = "m" ] || [ "$branch_selection" = "M" ]; then
+            read -p "👉 Nhập thủ công các chi nhánh (Ví dụ: develop,main): " branch_input
+            branch_input=$(echo "$branch_input" | tr -d '[:space:]')
+            if [ -z "$branch_input" ]; then
+                echo -e "${FAIL} Danh sách chi nhánh không được để trống."
+                continue
+            fi
+            IFS=',' read -r -a BRANCHES <<< "$branch_input"
+            break
+        elif [ -n "$branch_selection" ]; then
+            # Parse các index được chọn cách nhau bằng dấu phẩy
+            IFS=',' read -r -a selected_indices <<< "$branch_selection"
+            BRANCHES=()
+            valid=true
+            for index in "${selected_indices[@]}"; do
+                if [[ "$index" =~ ^[0-9]+$ ]] && [ "$index" -ge 1 ] && [ "$index" -le "${#git_branches[@]}" ]; then
+                    BRANCHES+=("${git_branches[$(($index - 1))]}")
+                else
+                    echo -e "${FAIL} Lựa chọn '$index' không hợp lệ."
+                    valid=false
+                    break
+                fi
+            done
+            if $valid && [ ${#BRANCHES[@]} -gt 0 ]; then
+                break
+            fi
+        else
+            echo -e "${FAIL} Vui lòng nhập lựa chọn."
+        fi
+    done
 fi
 
-IFS=',' read -r -a BRANCHES <<< "$branch_input"
+echo -e "${OK} Chi nhánh được chọn để cấu hình CI/CD: ${GREEN}$(IFS=','; echo "${BRANCHES[*]}")${NC}"
 
 cat <<EOF > "$target_ci"
 # ==============================================================================
