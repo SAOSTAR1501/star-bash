@@ -79,16 +79,42 @@ fi
 echo -e "\n${BOLD}${WHITE}==> 3. Cài đặt GitLab Runner chính thức nếu chưa có${NC}"
 if ! command -v gitlab-runner &> /dev/null; then
     echo -e "${INFO} GitLab Runner chưa được cài đặt trên hệ thống."
-    echo -e "${INFO} Đang thêm kho lưu trữ chính thức (apt repo) từ GitLab..."
-    curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" 2>/dev/null | bash
-    echo -e "${INFO} Đang cài đặt gitlab-runner package..."
-    apt-get update -y
-    apt-get install -y gitlab-runner
+    echo -e "${INFO} Đang cài đặt các gói phụ trợ cần thiết (curl, ca-certificates, gnupg, apt-transport-https)..."
+    apt-get update -y &>/dev/null || true
+    apt-get install -y curl ca-certificates gnupg apt-transport-https &>/dev/null || true
+
+    echo -e "${INFO} Đang tải và cấu hình kho lưu trữ chính thức từ GitLab..."
+    set +o pipefail
+    curl -sS -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" 2>/dev/null | bash || true
+    set -o pipefail
+
+    echo -e "${INFO} Đang cài đặt gitlab-runner package qua apt..."
+    apt-get update -y || true
+    if ! apt-get install -y gitlab-runner; then
+        echo -e "${WARN} Cài đặt qua kho lưu trữ apt thất bại (có thể do phiên bản OS chưa được hỗ trợ)."
+        echo -e "${INFO} Đang tiến hành tải trực tiếp gói cài đặt .deb chính thức từ GitLab..."
+        
+        # Xác định kiến trúc máy chủ (mặc định x86_64/amd64 hoặc arm64)
+        local arch; arch=$(uname -m)
+        local pkg_arch="amd64"
+        if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+            pkg_arch="arm64"
+        fi
+        
+        echo -e "${INFO} Tải tệp tin gitlab-runner_${pkg_arch}.deb..."
+        curl -L -o "gitlab-runner_${pkg_arch}.deb" "https://gitlab-runner-downloads.s3.amazonaws.com/latest/deb/gitlab-runner_${pkg_arch}.deb" || true
+        
+        if [ -f "gitlab-runner_${pkg_arch}.deb" ]; then
+            echo -e "${INFO} Đang cài đặt tệp .deb qua dpkg..."
+            dpkg -i "gitlab-runner_${pkg_arch}.deb" || apt-get install -f -y || true
+            rm -f "gitlab-runner_${pkg_arch}.deb"
+        fi
+    fi
     
     if command -v gitlab-runner &> /dev/null; then
         echo -e "${TICK} ${GREEN}Cài đặt thành công GitLab Runner!${NC}"
     else
-        echo -e "${CROSS} Cài đặt GitLab Runner qua apt thất bại!"
+        echo -e "${CROSS} Cài đặt GitLab Runner thất bại hoàn toàn!"
         exit 1
     fi
 else
