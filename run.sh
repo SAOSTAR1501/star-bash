@@ -497,12 +497,7 @@ EOF
                 echo -e " tại mục: ${BOLD}GitLab Repository -> Settings -> CI/CD -> Variables${NC}"
                 echo -e "$DASH\n"
                 
-                local key_path=""
-                if [ -f "/home/deployer/.ssh/id_rsa_gitlab" ]; then
-                    key_path="/home/deployer/.ssh/id_rsa_gitlab"
-                elif [ -f "/home/deployer/.ssh/id_ed25519_gitlab_local" ]; then
-                    key_path="/home/deployer/.ssh/id_ed25519_gitlab_local"
-                fi
+                local key_path="/home/deployer/.ssh/id_rsa_gitlab"
 
                 if [ -n "$key_path" ] && [ -f "$key_path" ]; then
                     cat "$key_path"
@@ -596,12 +591,7 @@ EOF
                     echo -e " tại mục: ${BOLD}GitLab Repository -> Settings -> Repository -> Deploy keys${NC}"
                     echo -e "$DASH\n"
                     
-                    local pub_key_path=""
-                    if [ -f "/home/deployer/.ssh/id_ed25519_gitlab_local.pub" ]; then
-                        pub_key_path="/home/deployer/.ssh/id_ed25519_gitlab_local.pub"
-                    elif [ -f "/home/deployer/.ssh/id_rsa_gitlab.pub" ]; then
-                        pub_key_path="/home/deployer/.ssh/id_rsa_gitlab.pub"
-                    fi
+                    local pub_key_path="/home/deployer/.ssh/id_rsa_gitlab.pub"
 
                     if [ -n "$pub_key_path" ] && [ -f "$pub_key_path" ]; then
                         cat "$pub_key_path"
