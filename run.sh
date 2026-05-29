@@ -214,7 +214,7 @@ project_detail_menu() {
         echo -e "  [1] ▶  Khởi chạy / Restart ứng dụng (PM2 hoặc Docker)"
         echo -e "  [2] 🔄 Pull Code mới & Triển khai nhanh (git pull & restart)"
         echo -e "  [3] 📄 Xem log ứng dụng trực tiếp (Real-time logs)"
-        echo -e "  [4] ⚡ Cấu hình / Cập nhật tệp CI/CD (.gitlab-ci.yml)"
+        echo -e "  [4] ⚡ Tạo cấu hình CI/CD (.gitlab-ci.yml) — In ra màn hình để copy"
         echo -e "  [5] 🔒 Gia hạn thủ công chứng chỉ SSL Certbot"
         echo -e "  [6] 🔑 Hiển thị Deployer Private Key (Thêm vào GitLab CI/CD)"
         echo -e "  [7] 🗑  Xoá bỏ dự án khỏi VPS (Safe Cleanup)"
@@ -278,8 +278,6 @@ project_detail_menu() {
                 fi
                 ;;
             4)
-                echo -e "\n🦊 CẤU HÌNH / CẬP NHẬT GITLAB CI/CD CHO DỰ ÁN..."
-                echo -e "------------------------------------------------------------------------"
                 if [ "$type" = "FE" ]; then
                     if [ -f "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci_fe.sh" ]; then
                         bash "$SCRIPT_DIR/scripts/setup/gen_gitlab_ci_fe.sh" "$domain" "$pdir"
@@ -293,7 +291,8 @@ project_detail_menu() {
                         echo -e "${FAIL} Không tìm thấy file script scripts/setup/gen_gitlab_ci_be.sh"
                     fi
                 fi
-                read -r -p "\n👉 Nhấn Enter để tiếp tục..." _
+                read -r -p "
+👉 Nhấn Enter để tiếp tục..." _
                 ;;
             4_old)
                 local target_ci="${pdir}/.gitlab-ci.yml"

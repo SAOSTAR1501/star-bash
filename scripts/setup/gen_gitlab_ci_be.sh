@@ -3,18 +3,18 @@
 # Script Name   : gen_gitlab_ci_be.sh
 # Description   : Backend dynamic Git Pull & Rebuild GitLab CI/CD pipeline generator
 # Usage         : Called internally by run.sh Project Manager
+# Output        : Prints .gitlab-ci.yml content to stdout for copy-paste
 # ==============================================================================
 
 domain="$1"
 pdir="$2"
-target_ci="${pdir}/.gitlab-ci.yml"
 
 # Colors & Formatting inside script
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
-BOLD='\033[1m'; CYAN='\033[0;36m'; NC='\033[0m'
+BOLD='\033[1m'; CYAN='\033[0;36m'; WHITE='\033[1;37m'; NC='\033[0m'
 OK="${GREEN}[✔]${NC}"; FAIL="${RED}[✘]${NC}"; WARN="${YELLOW}[⚠]${NC}"; INFO="${BLUE}[ℹ]${NC}"
 
-echo -e "\n🦊 CẤU HÌNH PIPELINE CI/CD DỰ ÁN BACKEND (Git Pull & Rebuild trên VPS)..."
+echo -e "\n🦊 TẠO CẤU HÌNH PIPELINE CI/CD DỰ ÁN BACKEND (Git Pull & Rebuild trên VPS)..."
 echo -e "------------------------------------------------------------------------"
 
 # Lấy danh sách các chi nhánh remote từ repository
@@ -54,7 +54,6 @@ else
             IFS=',' read -r -a BRANCHES <<< "$branch_input"
             break
         elif [ -n "$branch_selection" ]; then
-            # Parse các index được chọn cách nhau bằng dấu phẩy
             IFS=',' read -r -a selected_indices <<< "$branch_selection"
             BRANCHES=()
             valid=true
@@ -78,27 +77,26 @@ fi
 
 echo -e "${OK} Chi nhánh được chọn để cấu hình CI/CD: ${GREEN}$(IFS=','; echo "${BRANCHES[*]}")${NC}"
 
-cat <<EOF > "$target_ci"
-# ==============================================================================
+# ─── Build nội dung YAML vào biến ──────────────────────────────────────────────
+CI_CONTENT="# ==============================================================================
 # GitLab CI/CD Pipeline for Backend (Docker) - Git Pull & Rebuild on VPS
 # Project: ${domain}
 # Method: SSH Git Pull & trigger deploy.sh
 # ==============================================================================
 
 stages:
-  - deploy
-EOF
+  - deploy"
 
 for br in "${BRANCHES[@]}"; do
     br_upper=$(echo "$br" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr '/' '_')
-    cat <<EOF >> "$target_ci"
+    CI_CONTENT+="
 
 # --- DEPLOY JOB CHO CHI NHÁNH: ${br} ---
 deploy-${br}:
   stage: deploy
   image: alpine:latest
   rules:
-    - if: \$CI_COMMIT_BRANCH == "${br}"
+    - if: \$CI_COMMIT_BRANCH == \"${br}\"
   variables:
     ENV_FILE: \$ENV_LOCAL_${br_upper}
     ENV_DOCKER_FILE: \$ENV_DOCKER_${br_upper}
@@ -106,26 +104,50 @@ deploy-${br}:
     - apk add --no-cache openssh-client
     - mkdir -p ~/.ssh
     - eval \$(ssh-agent -s)
-    - echo "\$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    - echo \"\$SSH_PRIVATE_KEY\" | tr -d '\r' | ssh-add -
+    - echo -e \"Host *\n\tStrictHostKeyChecking no\n\n\" > ~/.ssh/config
   script:
-    - echo "==> Đang đăng nhập VPS để thực hiện Git Pull và cấu hình môi trường..."
-    - ssh deployer@\$VPS_IP "
+    - echo \"==> Đang đăng nhập VPS để thực hiện Git Pull...\"
+    - ssh deployer@\$VPS_IP \"
         cd /home/${domain} &&
         git reset --hard &&
         git checkout -f ${br} &&
         git clean -fd &&
-        git pull &&
-        echo \"\$ENV_FILE\" > .env &&
-        echo \"\$ENV_DOCKER_FILE\" > .env.docker &&
-        if [ -f scripts/deploy.sh ]; then bash scripts/deploy.sh; else bash deploy.sh; fi
-      "
-    - echo "✅ Triển khai thành công trên nhánh ${br}."
-EOF
+        git pull
+      \"
+    - echo \"==> Đang ghi file .env và .env.docker lên VPS...\"
+    - scp \"\$ENV_FILE\" deployer@\$VPS_IP:/home/${domain}/.env
+    - scp \"\$ENV_DOCKER_FILE\" deployer@\$VPS_IP:/home/${domain}/.env.docker
+    - echo \"==> Khởi chạy deploy script trên VPS...\"
+    - ssh deployer@\$VPS_IP \"
+        cd /home/${domain} &&
+        if [ -f scripts/deploy.sh ]; then sed -i 's/\r\$//' scripts/deploy.sh && bash scripts/deploy.sh; else [ -f deploy.sh ] && sed -i 's/\r\$//' deploy.sh && bash deploy.sh; fi
+      \"
+    - echo \"✅ Triển khai thành công trên nhánh ${br}.\""
 done
 
-chown deployer:deployer "$target_ci" 2>/dev/null || true
-echo -e "\n${OK} Đã cấu hình thành công tệp: ${BOLD}${target_ci}${NC}"
+# ─── In ra màn hình ────────────────────────────────────────────────────────────
+echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
+echo -e " 📋 ${BOLD}${WHITE}NỘI DUNG FILE .gitlab-ci.yml (BACKEND)${NC}"
 echo -e " 🔹 Phương thức: Git Pull & Rebuild trực tiếp trên VPS"
 echo -e " 🔹 Thư mục deploy cố định: ${BOLD}/home/${domain}${NC}"
+echo -e "${BOLD}${CYAN}========================================================================${NC}"
+echo -e "${YELLOW}Hãy copy toàn bộ nội dung bên dưới và dán vào file ${BOLD}.gitlab-ci.yml${NC}${YELLOW} trong repo dự án:${NC}"
+echo -e "${BOLD}${CYAN}------------------------------------------------------------------------${NC}"
+
+echo "$CI_CONTENT"
+
+echo -e "${BOLD}${CYAN}------------------------------------------------------------------------${NC}"
+echo -e "\n${OK} Đã tạo cấu hình GitLab CI/CD Backend thành công!"
+echo -e " 💡 ${YELLOW}Hướng dẫn:${NC}"
+echo -e "    1. Copy nội dung phía trên vào file ${BOLD}.gitlab-ci.yml${NC} trong thư mục gốc dự án"
+echo -e "    2. Commit và push lên Git"
+echo -e "    3. Đảm bảo đã thêm các biến CI/CD trên GitLab:"
+for br in "${BRANCHES[@]}"; do
+    br_upper=$(echo "$br" | tr '[:lower:]' '[:upper:]' | tr '-' '_' | tr '/' '_')
+    echo -e "       - ${BOLD}ENV_LOCAL_${br_upper}${NC} (File) → nội dung .env"
+    echo -e "       - ${BOLD}ENV_DOCKER_${br_upper}${NC} (File) → nội dung .env.docker"
+done
+echo -e "       - ${BOLD}VPS_IP${NC} (Variable) → IP Public của VPS"
+echo -e "       - ${BOLD}SSH_PRIVATE_KEY${NC} (Variable) → Private Key deployer"
 echo -e "\n💡 Hãy đảm bảo user deployer trên VPS có quyền pull code từ Git (hoặc deploy key đã được thêm vào repo)."
