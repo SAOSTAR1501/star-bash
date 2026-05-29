@@ -7,12 +7,17 @@
 # Version       : 2.0.0
 # ==============================================================================
 
-# Thiết lập đường dẫn tương đối và nạp cấu hình
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.env"
+# Thiết lập đường dẫn cấu hình toàn cục an toàn ngoài thư mục dự án
+GLOBAL_CONFIG_DIR="/etc/star-bash"
+CONFIG_FILE="${GLOBAL_CONFIG_DIR}/monitor.env"
 
+# Nếu chưa có cấu hình toàn cục, fallback về thư mục hiện tại của script
 if [ ! -f "$CONFIG_FILE" ]; then
-    CONFIG_FILE="${SCRIPT_DIR}/config.env.example"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+    CONFIG_FILE="${SCRIPT_DIR}/config.env"
+    if [ ! -f "$CONFIG_FILE" ]; then
+        CONFIG_FILE="${SCRIPT_DIR}/config.env.example"
+    fi
 fi
 
 # Nạp cấu hình

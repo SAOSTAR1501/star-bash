@@ -21,15 +21,17 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.env"
+GLOBAL_CONFIG_DIR="/etc/star-bash"
+CONFIG_FILE="${GLOBAL_CONFIG_DIR}/monitor.env"
 MONITOR_SCRIPT="${SCRIPT_DIR}/system_monitor.sh"
 
-# 2. Khởi tạo file cấu hình config.env
+# 2. Khởi tạo thư mục và file cấu hình an toàn toàn cục
+mkdir -p "$GLOBAL_CONFIG_DIR"
 if [ ! -f "$CONFIG_FILE" ]; then
     cp "${SCRIPT_DIR}/config.env.example" "$CONFIG_FILE"
-    echo -e "${OK} Khởi tạo file cấu hình '${BOLD}config.env${NC}'."
+    echo -e "${OK} Khởi tạo file cấu hình an toàn tại: '${BOLD}${CONFIG_FILE}${NC}'."
 else
-    echo -e "${INFO} File cấu hình '${BOLD}config.env${NC}' đã tồn tại sẵn."
+    echo -e "${INFO} Khởi động lại: File cấu hình đã có sẵn tại '${BOLD}${CONFIG_FILE}${NC}' (Không bị ghi đè khi cập nhật)."
 fi
 
 # 3. Yêu cầu cài đặt jq nếu chưa có (Dùng để parse JSON gửi webhook)
