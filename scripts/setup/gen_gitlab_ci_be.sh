@@ -116,7 +116,7 @@ deploy-${br}:
         git pull &&
         echo \"\$ENV_FILE\" > .env &&
         echo \"\$ENV_DOCKER_FILE\" > .env.docker &&
-        bash deploy.sh
+        if [ -f scripts/deploy.sh ]; then bash scripts/deploy.sh; else bash deploy.sh; fi
       "
     - echo "✅ Triển khai thành công trên nhánh ${br}."
 EOF

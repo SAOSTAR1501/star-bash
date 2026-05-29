@@ -176,8 +176,9 @@ echo -e "\n${BOLD}${WHITE}==> Bước 4: Thiết lập lệnh khởi chạy Dock
 read -p "👉 Nhập lệnh chạy Docker riêng biệt của bạn (Mặc định: docker compose up --build -d): " docker_cmd
 docker_cmd=${docker_cmd:-"docker compose up --build -d"}
 
-# Tạo tệp tin deploy.sh chuẩn hóa để CI/CD gọi
-DEPLOY_SCRIPT="${APP_PATH}/deploy.sh"
+# Tạo tệp tin deploy.sh chuẩn hóa đặt trong thư mục scripts
+mkdir -p "${APP_PATH}/scripts"
+DEPLOY_SCRIPT="${APP_PATH}/scripts/deploy.sh"
 cat <<EOF > "$DEPLOY_SCRIPT"
 #!/bin/bash
 # ==============================================================================
@@ -189,8 +190,8 @@ ${docker_cmd}
 EOF
 
 chmod +x "$DEPLOY_SCRIPT"
-chown deployer:deployer "$DEPLOY_SCRIPT"
-echo -e "${TICK} Đã tạo thành công tệp khởi chạy ${BOLD}deploy.sh${NC} chứa lệnh: ${BOLD}${docker_cmd}${NC}"
+chown -R deployer:deployer "${APP_PATH}/scripts" 2>/dev/null || true
+echo -e "${TICK} Đã tạo thành công tệp khởi chạy ${BOLD}scripts/deploy.sh${NC} chứa lệnh: ${BOLD}${docker_cmd}${NC}"
 
 # ==============================================================================
 # BƯỚC 5: CẤU HÌNH NGINX REVERSE PROXY & SSL CERTBOT
@@ -384,7 +385,7 @@ deploy-${br}:
         tar -xzf build.tar.gz &&
         rm -f build.tar.gz &&
         export PATH=\\\$PATH:/usr/bin:/usr/local/bin &&
-        bash deploy.sh
+        if [ -f scripts/deploy.sh ]; then bash scripts/deploy.sh; else bash deploy.sh; fi
       "
     - echo "✅ Deploy thành công lên Docker trên VPS."
 EOF
@@ -412,11 +413,11 @@ echo -e " 1. Thư mục chạy dự án  : ${BOLD}${APP_PATH}${NC}"
 echo -e " 2. Cổng Container Host : ${BOLD}${port}${NC}"
 echo -e " 3. Tên miền truy cập   : ${GREEN}https://${domain}${NC} (Đã kích hoạt SSL)"
 echo -e " 4. Lệnh chạy thực tế   : ${BOLD}${docker_cmd}${NC}"
-echo -e " 5. Tệp điều phối chạy  : ${BOLD}${APP_PATH}/deploy.sh${NC}"
+echo -e " 5. Tệp điều phối chạy  : ${BOLD}${APP_PATH}/scripts/deploy.sh${NC}"
 echo -e " 6. GitLab CI Config    : ${BOLD}${APP_PATH}/.gitlab-ci.yml${NC}"
 echo -e ""
 echo -e " 👉 LƯU Ý KHI CHẠY DỰ ÁN LẦN ĐẦU TIÊN:"
 echo -e "    Hãy chạy lệnh sau dưới quyền deployer để ứng dụng được khởi chạy ban đầu:"
 echo -e "    ${BOLD}su - deployer${NC}"
-echo -e "    ${BOLD}cd ${APP_PATH} && bash deploy.sh${NC}"
+echo -e "    ${BOLD}cd ${APP_PATH} && if [ -f scripts/deploy.sh ]; then bash scripts/deploy.sh; else bash deploy.sh; fi${NC}"
 echo -e "${BOLD}${GREEN}========================================================================${NC}\n"
