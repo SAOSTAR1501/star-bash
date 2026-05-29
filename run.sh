@@ -218,10 +218,11 @@ project_detail_menu() {
         echo -e "  [5] 🔒 Gia hạn thủ công chứng chỉ SSL Certbot"
         echo -e "  [6] 🔑 Hiển thị Deployer Private Key (Thêm vào GitLab CI/CD)"
         echo -e "  [7] 🗑  Xoá bỏ dự án khỏi VPS (Safe Cleanup)"
+        echo -e "  [8] 🔑 Sửa phân quyền thư mục (Cấp quyền cho deployer)"
         echo -e "  [0] Quay lại danh sách dự án"
         echo -e "${BOLD}${CYAN}========================================================================${NC}"
         
-        read -r -p "👉 Nhập lựa chọn quản trị [0-7]: " action_idx
+        read -r -p "👉 Nhập lựa chọn quản trị [0-8]: " action_idx
         case "$action_idx" in
             0|"") break ;;
             1)
@@ -513,6 +514,19 @@ EOF
                     sleep 2
                     break
                 fi
+                ;;
+            8)
+                echo -e "\n🔑 Đang tiến hành khôi phục quyền sở hữu cho user '${BOLD}deployer${NC}'..."
+                if id "deployer" &>/dev/null; then
+                    chown -R deployer:deployer "$pdir"
+                    chmod -R 755 "$pdir"
+                    # Tránh lỗi Git safe.directory trên VPS của Git mới
+                    sudo -u deployer git config --global --add safe.directory "$pdir" 2>/dev/null || true
+                    echo -e "${OK} Khôi phục phân quyền thành công! Thư mục đã thuộc sở hữu của ${BOLD}deployer:deployer${NC}."
+                else
+                    echo -e "${FAIL} Không tìm thấy user 'deployer' trên VPS. Vui lòng cấu hình ở Menu chính."
+                fi
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
                 ;;
             *)
                 echo -e "${FAIL} Lựa chọn không hợp lệ."
