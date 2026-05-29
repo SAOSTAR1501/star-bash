@@ -170,7 +170,7 @@ scan_projects() {
                     type="BE"
                     if command -v docker &>/dev/null; then
                         # Check running containers related to project directory
-                        local d_cnt; d_cnt=$(docker ps --format '{{.Names}}' | grep -ic "$name" || echo "0")
+                        local d_cnt; d_cnt=$(docker ps --format '{{.Names}}' | grep -ic "$name" || true); d_cnt=${d_cnt:-0}
                         if [ "$d_cnt" -gt 0 ]; then
                             runtime="${GREEN}up ($d_cnt containers)${NC}"
                         else
