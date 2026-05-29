@@ -112,7 +112,9 @@ deploy-${br}:
     - echo "==> Đang đăng nhập VPS để thực hiện Git Pull và cấu hình môi trường..."
     - ssh deployer@\$VPS_IP "
         cd /home/${domain} &&
-        git checkout ${br} &&
+        git reset --hard &&
+        git checkout -f ${br} &&
+        git clean -fd &&
         git pull &&
         echo \"\$ENV_FILE\" > .env &&
         echo \"\$ENV_DOCKER_FILE\" > .env.docker &&

@@ -248,7 +248,7 @@ project_detail_menu() {
                 ;;
             2)
                 echo -e "\n🔄 Đang Pull code và cập nhật..."
-                su - deployer -c "cd $pdir && git pull"
+                su - deployer -c "cd $pdir && git reset --hard && git clean -fd && git pull"
                 if [ "$type" = "FE" ]; then
                     su - deployer -c "pm2 restart $domain || pm2 start $pdir/ecosystem.config.js"
                 else
