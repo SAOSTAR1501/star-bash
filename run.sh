@@ -754,12 +754,90 @@ dispatch_choice() {
             prompt_next "deployer"
             ;;
         7)
-            if [ -f "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh" ]; then
-                bash "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh"
-            else
-                echo -e "${FAIL} setup_gitlab_runner.sh không tìm thấy"; sleep 2
-            fi
-            prompt_next "runner"
+            while true; do
+                clear
+                echo -e "${BOLD}${CYAN}========================================================================${NC}"
+                echo -e "         🦊 ${BOLD}${WHITE}QUẢN TRỊ & ĐĂNG KÝ GITLAB RUNNER TRÊN VPS${NC} 🦊              "
+                echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
+                echo -e "  [1] ⚙️  Cài đặt mới / Reset GitLab Runner bảo mật (Non-Root)"
+                echo -e "  [2] 🔑 Đăng ký (Register) thêm Runner mới với GitLab Server"
+                echo -e "  [3] 📋 Xem danh sách các Runner hiện có (gitlab-runner list)"
+                echo -e "  [4] 🔄 Khởi động lại dịch vụ GitLab Runner (Restart Service)"
+                echo -e "  [0] Quay lại Menu chính"
+                echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
+                read -r -p "👉 Chọn chức năng quản trị GitLab Runner [0-4]: " runner_action
+                case "$runner_action" in
+                    0|"") break ;;
+                    1)
+                        if [ -f "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh" ]; then
+                            bash "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh"
+                        else
+                            echo -e "${FAIL} setup_gitlab_runner.sh không tìm thấy"; sleep 2
+                        fi
+                        prompt_next "runner"
+                        ;;
+                    2)
+                        echo -e "\n🦊 Bắt đầu quy trình đăng ký Runner tương tác..."
+                        # Lấy URL
+                        read -p "👉 Nhập GitLab Instance URL (Mặc định: https://gitlab.com): " gitlab_url
+                        gitlab_url=${gitlab_url:-"https://gitlab.com"}
+                        
+                        # Lấy Token
+                        read -p "👉 Nhập GitLab Registration/Runner Token: " gitlab_token
+                        if [ -z "$gitlab_token" ]; then
+                            echo -e "${FAIL} Token không được để trống."
+                            sleep 2
+                            continue
+                        fi
+                        
+                        # Lấy Tags
+                        read -p "👉 Nhập Tags cho Runner (cách nhau bởi dấu phẩy, ví dụ: fe,be,prod. Ấn Enter để bỏ qua): " runner_tags
+                        tag_param=""
+                        [ -n "$runner_tags" ] && tag_param="--tag-list $runner_tags"
+                        
+                        # Lấy Description
+                        default_desc="Secure Docker Runner on $(hostname)"
+                        read -p "👉 Nhập mô tả Runner (Mặc định: '$default_desc'): " runner_desc
+                        runner_desc=${runner_desc:-"$default_desc"}
+                        
+                        # Đăng ký chính thức
+                        if gitlab-runner register \
+                            --non-interactive \
+                            --config "/etc/gitlab-runner/config.toml" \
+                            --url "$gitlab_url" \
+                            --registration-token "$gitlab_token" \
+                            --executor "docker" \
+                            --description "$runner_desc" \
+                            --docker-image "alpine:latest" \
+                            $tag_param; then
+                            echo -e "\n${OK} ${GREEN}Đăng ký Runner thành công!${NC}"
+                            chown -R gitlab-runner:gitlab-runner /etc/gitlab-runner 2>/dev/null || true
+                            chmod 640 /etc/gitlab-runner/config.toml 2>/dev/null || true
+                            systemctl restart gitlab-runner
+                        else
+                            echo -e "\n${FAIL} Đăng ký Runner thất bại."
+                        fi
+                        read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                        ;;
+                    3)
+                        echo -e "\n📋 Danh sách các Runner đã đăng ký trên hệ thống:"
+                        echo -e "--------------------------------------------------------"
+                        gitlab-runner list
+                        echo -e "--------------------------------------------------------"
+                        read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                        ;;
+                    4)
+                        echo -e "\n🔄 Đang khởi động lại dịch vụ gitlab-runner..."
+                        systemctl restart gitlab-runner
+                        echo -e "${OK} Khởi động lại dịch vụ thành công."
+                        read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                        ;;
+                    *)
+                        echo -e "${FAIL} Lựa chọn không hợp lệ."
+                        sleep 1
+                        ;;
+                esac
+            done
             ;;
         8)
             if [ -f "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh" ]; then
