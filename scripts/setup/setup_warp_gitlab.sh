@@ -54,7 +54,15 @@ else
     curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
     
     # Thêm APT Repository
-    echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/cloudflare-client.list
+    OS_CODENAME=$(lsb_release -cs)
+    # Kiểm tra xem Cloudflare có hỗ trợ codename hiện tại không, nếu không thì fallback về noble (Ubuntu 24.04)
+    if ! curl -fsSL -o /dev/null "https://pkg.cloudflareclient.com/dists/${OS_CODENAME}/Release"; then
+        echo -e "${WARN} Không tìm thấy repository Cloudflare WARP cho bản phân phối '${OS_CODENAME}'."
+        echo -e "${INFO} Tự động chuyển vùng cài đặt (fallback) về 'noble' (Ubuntu 24.04)..."
+        OS_CODENAME="noble"
+    fi
+    
+    echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ ${OS_CODENAME} main" | tee /etc/apt/sources.list.d/cloudflare-client.list
     
     # Cài đặt
     apt update
