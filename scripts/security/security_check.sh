@@ -210,6 +210,25 @@ check_network_ports() {
     else
         log_message "FAIL" "No standard firewall tool (UFW, Firewalld, iptables) detected!"
     fi
+
+    # Auditing DOCKER-USER chain in iptables to prevent accidental port blocking
+    if command -v iptables &>/dev/null; then
+        if iptables -L DOCKER-USER -n &>/dev/null; then
+            local docker_user_rules; docker_user_rules=$(iptables -S DOCKER-USER 2>/dev/null)
+            local drop_rules_count; drop_rules_count=$(echo "$docker_user_rules" | grep -c "DROP" || echo "0")
+            if [ "$drop_rules_count" -gt 0 ]; then
+                log_message "WARN" "Phát hiện chuỗi DOCKER-USER chứa $drop_rules_count luật chặn (DROP)."
+                # Check if port 80 and 443 are explicitly allowed before the DROP rules
+                local accept_80; accept_80=$(echo "$docker_user_rules" | grep -E "ACCEPT" | grep -c "dport 80" || echo "0")
+                local accept_443; accept_443=$(echo "$docker_user_rules" | grep -E "ACCEPT" | grep -c "dport 443" || echo "0")
+                if [ "$accept_80" -eq 0 ] || [ "$accept_443" -eq 0 ]; then
+                    log_message "FAIL" "CẢNH BÁO: DOCKER-USER có luật DROP nhưng CHƯA mở cổng HTTP/HTTPS (Port 80/443)! Điều này có thể làm ngắt kết nối của các dịch vụ công cộng chạy bằng Docker như Traefik/Nginx."
+                else
+                    log_message "SUCCESS" "DOCKER-USER có luật DROP nhưng đã mở cổng 80 & 443 an toàn."
+                fi
+            fi
+        fi
+    fi
 }
 
 # ==============================================================================
@@ -545,29 +564,98 @@ remediate_ssh() {
 }
 
 remediate_docker_info() {
-    echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
-    echo -e "${BOLD}${WHITE}       🐳 HƯỚNG DẪN BẢO MẬT CỔNG CONTAINER DOCKER (DOCKER-UFW BYPASS)  ${NC}"
-    echo -e "${BOLD}${CYAN}========================================================================${NC}"
-    echo -e "${YELLOW}Cảnh báo:${NC} Mặc định, Docker tự thêm rules vào iptables và bypass hoàn toàn tường lửa UFW."
-    echo -e "Điều này có nghĩa là nếu bạn mở cổng dịch vụ dạng ${BOLD}-p 5432:5432${NC}, bất kỳ ai cũng truy cập được cổng này."
-    echo -e ""
-    echo -e "${BOLD}${GREEN}Giải pháp 1: Chỉ cho phép kết nối nội bộ (Khuyên dùng)${NC}"
-    echo -e "Nếu PostgreSQL hoặc dịch vụ chỉ dùng cho các container khác kết nối nội bộ, hãy:"
-    echo -e " - ${BOLD}Xóa hoàn toàn${NC} phần 'ports:' khỏi file ${BOLD}docker-compose.yml${NC}."
-    echo -e " - Sử dụng cơ chế Docker Network để các container tự liên lạc nội bộ với nhau."
-    echo -e ""
-    echo -e "${BOLD}${GREEN}Giải pháp 2: Chỉ bind cổng vào localhost (127.0.0.1)${NC}"
-    echo -e "Nếu cần truy cập cổng này từ máy cá nhân thông qua SSH Tunneling:"
-    echo -e " - Trong file ${BOLD}docker-compose.yml${NC}, hãy đổi cấu hình port thành:"
-    echo -e "   ${BOLD}ports:${NC}"
-    echo -e "     ${BOLD}- \"127.0.0.1:5432:5432\"${NC}"
-    echo -e " - Đối với dòng lệnh chạy container đơn lẻ, dùng:"
-    echo -e "   ${BOLD}docker run -p 127.0.0.1:5432:5432 postgres${NC}"
-    echo -e ""
-    echo -e "${BOLD}${GREEN}Giải pháp 3: Sử dụng ufw-docker (Cấp cao)${NC}"
-    echo -e "Nếu bắt buộc phải mở cổng công khai nhưng muốn UFW kiểm soát:"
-    echo -e " - Xem thêm hướng dẫn tích hợp tại: https://github.com/chaifeng/ufw-docker"
-    echo -e "${BOLD}${CYAN}========================================================================${NC}"
+    local docker_opt
+    while true; do
+        clear
+        echo -e "${BOLD}${CYAN}========================================================================${NC}"
+        echo -e "${BOLD}${WHITE}       🐳 QUẢN TRỊ & BẢO MẬT CỔNG CONTAINER DOCKER (DOCKER-USER)      ${NC}"
+        echo -e "${BOLD}${CYAN}========================================================================${NC}"
+        echo -e " [1] 📋 Xem các quy tắc DOCKER-USER hiện có trong iptables"
+        echo -e " [2] 🔓 Mở cổng 80 & 443 cho Traefik/Web (Sửa lỗi Let's Encrypt Timeout)"
+        echo -e " [3] 🔓 Mở một cổng tùy chỉnh tự chọn (Ví dụ: 3002)"
+        echo -e " [4] ❌ Xóa bỏ luật chặn chung chung (-i eth0 -j DROP) khỏi DOCKER-USER"
+        echo -e " [5] 📖 Xem hướng dẫn bảo mật cổng Docker (Docker-UFW bypass)"
+        echo -e " [0] Quay lại Menu bảo mật"
+        echo -e "${BOLD}${CYAN}========================================================================${NC}"
+        read -p "👉 Nhập lựa chọn quản trị Docker Firewall [0-5]: " docker_opt
+        
+        case "$docker_opt" in
+            0|"") return 0 ;;
+            1)
+                echo -e "\n📋 Các quy tắc trong chuỗi DOCKER-USER hiện tại:"
+                echo -e "--------------------------------------------------------"
+                if iptables -L DOCKER-USER -n -v &>/dev/null; then
+                    iptables -L DOCKER-USER -n -v
+                else
+                    echo -e "${FAIL} Không thể đọc chuỗi DOCKER-USER. Có thể Docker chưa chạy hoặc không có quyền root."
+                fi
+                echo -e "--------------------------------------------------------"
+                ;;
+            2)
+                echo -e "\n🔓 Đang chèn luật cho phép cổng 80 (HTTP) và 443 (HTTPS) vào chuỗi DOCKER-USER..."
+                if sudo iptables -I DOCKER-USER 1 -i eth0 -p tcp --dport 80 -j ACCEPT 2>/dev/null && \
+                   sudo iptables -I DOCKER-USER 1 -i eth0 -p tcp --dport 443 -j ACCEPT 2>/dev/null; then
+                    echo -e "${TICK} ${GREEN}Đã mở cổng 80 & 443 thành công trên DOCKER-USER!${NC}"
+                else
+                    echo -e "${CROSS} Thực thi thất bại. Vui lòng kiểm tra quyền sudo/root."
+                fi
+                ;;
+            3)
+                echo -e ""
+                read -p "👉 Nhập số cổng muốn mở rộng (Ví dụ: 3002): " custom_port
+                if [[ "$custom_port" =~ ^[0-9]+$ ]] && [ "$custom_port" -ge 1 ] && [ "$custom_port" -le 65535 ]; then
+                    echo -e "\n🔓 Đang chèn luật cho phép cổng $custom_port vào chuỗi DOCKER-USER..."
+                    if sudo iptables -I DOCKER-USER 1 -i eth0 -p tcp --dport "$custom_port" -j ACCEPT 2>/dev/null; then
+                        echo -e "${TICK} ${GREEN}Đã mở cổng $custom_port thành công trên DOCKER-USER!${NC}"
+                    else
+                        echo -e "${CROSS} Thực thi thất bại. Vui lòng kiểm tra quyền sudo/root."
+                    fi
+                else
+                    echo -e "${CROSS} Số cổng không hợp lệ!"
+                fi
+                ;;
+            4)
+                echo -e "\n❌ Đang tiến hành xóa các quy tắc chặn chung (-i eth0 -j DROP) khỏi DOCKER-USER..."
+                local deleted=0
+                while sudo iptables -D DOCKER-USER -i eth0 -j DROP 2>/dev/null; do
+                    deleted=$((deleted + 1))
+                done
+                if [ "$deleted" -gt 0 ]; then
+                    echo -e "${TICK} ${GREEN}Đã xóa thành công $deleted quy tắc DROP trên eth0!${NC}"
+                else
+                    echo -e "${WARN} Không tìm thấy quy tắc DROP nào phù hợp để xóa."
+                fi
+                ;;
+            5)
+                clear
+                echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
+                echo -e "${BOLD}${WHITE}       🐳 HƯỚNG DẪN BẢO MẬT CỔNG CONTAINER DOCKER (DOCKER-UFW BYPASS)  ${NC}"
+                echo -e "${BOLD}${CYAN}========================================================================${NC}"
+                echo -e "${YELLOW}Cảnh báo:${NC} Mặc định, Docker tự thêm rules vào iptables và bypass hoàn toàn tường lửa UFW."
+                echo -e "Điều này có nghĩa là nếu bạn mở cổng dịch vụ dạng ${BOLD}-p 5432:5432${NC}, bất kỳ ai cũng truy cập được cổng này."
+                echo -e ""
+                echo -e "${BOLD}${GREEN}Giải pháp 1: Chỉ cho phép kết nối nội bộ (Khuyên dùng)${NC}"
+                echo -e "Nếu PostgreSQL hoặc dịch vụ chỉ dùng cho các container khác kết nối nội bộ, hãy:"
+                echo -e " - ${BOLD}Xóa hoàn toàn${NC} phần 'ports:' khỏi file ${BOLD}docker-compose.yml${NC}."
+                echo -e " - Sử dụng cơ chế Docker Network để các container tự liên lạc nội bộ với nhau."
+                echo -e ""
+                echo -e "${BOLD}${GREEN}Giải pháp 2: Chỉ bind cổng vào localhost (127.0.0.1)${NC}"
+                echo -e "Nếu cần truy cập cổng này từ máy cá nhân thông qua SSH Tunneling:"
+                echo -e " - Trong file ${BOLD}docker-compose.yml${NC}, hãy đổi cấu hình port thành:"
+                echo -e "   ${BOLD}ports:${NC}"
+                echo -e "     ${BOLD}- \"127.0.0.1:5432:5432\"${NC}"
+                echo -e " - Đối với dòng lệnh chạy container đơn lẻ, dùng:"
+                echo -e "   ${BOLD}docker run -p 127.0.0.1:5432:5432 postgres${NC}"
+                echo -e ""
+                echo -e "${BOLD}${GREEN}Giải pháp 3: Sử dụng ufw-docker (Cấp cao)${NC}"
+                echo -e "Nếu bắt buộc phải mở cổng công khai nhưng muốn UFW kiểm soát:"
+                echo -e " - Xem thêm hướng dẫn tích hợp tại: https://github.com/chaifeng/ufw-docker"
+                echo -e "${BOLD}${CYAN}========================================================================${NC}"
+                ;;
+        esac
+        echo -e "\n${INFO} Nhấn Enter để tiếp tục..."
+        read -r temp
+    done
 }
 
 remediate_security_tools() {
