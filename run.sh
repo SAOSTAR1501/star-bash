@@ -81,12 +81,9 @@ show_smart_dashboard() {
 
     # Block QUICK MENU
     print_border_line " ${GREEN}🏃 MAIN CONTROL CENTER${NC}"
-    print_border_line "  [1] Server Setup & Tools Stack    [2] Khởi tạo Frontend Project (FE)"
-    print_border_line "  [3] Khởi tạo Backend Project (BE) [4] Quản lý Dự án (Project Manager)"
-    print_border_line "  [5] Kiểm tra bảo mật VPS (Audit)  [6] Cấu hình User VPS Deployer SSH"
-    print_border_line "  [7] Cài đặt GitLab Runner an toàn  [8] Cấu hình WARP & GitLab Connect"
-    print_border_line "  [9] Other Tools & VPS Monitor      [10] Cập nhật Star-Bash (Update)"
-    print_border_line "  [00] Cẩm nang Hướng dẫn (Guidelines)  [0] Thoát chương trình"
+    print_border_line "  [1] DevOps Suite v1 (Legacy)       [2] DevOps Suite v2 (Traefik & Runner)"
+    print_border_line "  [U] Cập nhật Star-Bash (Update)    [00] Cẩm nang Hướng dẫn (Guidelines)"
+    print_border_line "  [0] Thoát chương trình"
     echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
 }
 
@@ -613,6 +610,243 @@ EOF
 }
 
 # ==============================================================================
+# RUNNER SUBMENU
+# ==============================================================================
+runner_submenu() {
+    while true; do
+        clear
+        echo -e "${BOLD}${CYAN}========================================================================${NC}"
+        echo -e "         🦊 ${BOLD}${WHITE}QUẢN TRỊ & ĐĂNG KÝ GITLAB RUNNER TRÊN VPS${NC} 🦊              "
+        echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
+        echo -e "  [1] ⚙️  Cài đặt mới / Reset GitLab Runner bảo mật (Non-Root)"
+        echo -e "  [2] 🔑 Đăng ký (Register) thêm Runner mới với GitLab Server"
+        echo -e "  [3] 📋 Xem danh sách các Runner hiện có (gitlab-runner list)"
+        echo -e "  [4] 🔄 Khởi động lại dịch vụ GitLab Runner (Restart Service)"
+        echo -e "  [0] Quay lại"
+        echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
+        read -r -p "👉 Chọn chức năng quản trị GitLab Runner [0-4]: " runner_action
+        case "$runner_action" in
+            0|"") break ;;
+            1)
+                if [ -f "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh"
+                else
+                    echo -e "${FAIL} setup_gitlab_runner.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "runner"
+                ;;
+            2)
+                echo -e "\n🦊 Bắt đầu quy trình đăng ký Runner tương tác..."
+                read -p "👉 Nhập GitLab Instance URL (Mặc định: https://gitlab.com): " gitlab_url
+                gitlab_url=${gitlab_url:-"https://gitlab.com"}
+                
+                read -p "👉 Nhập GitLab Registration/Runner Token: " gitlab_token
+                if [ -z "$gitlab_token" ]; then
+                    echo -e "${FAIL} Token không được để trống."
+                    sleep 2
+                    continue
+                fi
+                
+                read -p "👉 Nhập Tags cho Runner (cách nhau bởi dấu phẩy, ví dụ: fe,be,prod. Ấn Enter để bỏ qua): " runner_tags
+                tag_param=""
+                [ -n "$runner_tags" ] && tag_param="--tag-list $runner_tags"
+                
+                default_desc="Secure Docker Runner on $(hostname)"
+                read -p "👉 Nhập mô tả Runner (Mặc định: '$default_desc'): " runner_desc
+                runner_desc=${runner_desc:-"$default_desc"}
+                
+                default_image="alpine:latest"
+                read -p "👉 Nhập Docker Image mặc định (Mặc định: '$default_image'): " docker_image
+                docker_image=${docker_image:-"$default_image"}
+                
+                if gitlab-runner register \
+                    --non-interactive \
+                    --config "/etc/gitlab-runner/config.toml" \
+                    --url "$gitlab_url" \
+                    --registration-token "$gitlab_token" \
+                    --executor "docker" \
+                    --description "$runner_desc" \
+                    --docker-image "$docker_image" \
+                    $tag_param; then
+                    echo -e "\n${OK} ${GREEN}Đăng ký Runner thành công!${NC}"
+                    chown -R gitlab-runner:gitlab-runner /etc/gitlab-runner 2>/dev/null || true
+                    chmod 640 /etc/gitlab-runner/config.toml 2>/dev/null || true
+                    systemctl restart gitlab-runner
+                else
+                    echo -e "\n${FAIL} Đăng ký Runner thất bại."
+                fi
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            3)
+                echo -e "\n📋 Danh sách các Runner đã đăng ký trên hệ thống:"
+                echo -e "--------------------------------------------------------"
+                gitlab-runner list
+                echo -e "--------------------------------------------------------"
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            4)
+                echo -e "\n🔄 Đang khởi động lại dịch vụ gitlab-runner..."
+                systemctl restart gitlab-runner
+                echo -e "${OK} Khởi động lại dịch vụ thành công."
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            *)
+                echo -e "${FAIL} Lựa chọn không hợp lệ."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# ==============================================================================
+# DEVOPS SUITE V1 (LEGACY)
+# ==============================================================================
+v1_devops_menu() {
+    local choice
+    while true; do
+        clear
+        echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        print_border_line "         🌟 ${BOLD}${WHITE}DEVOPS SUITE V1 (LEGACY CONTROL)${NC} 🌟         "
+        echo -e "${BOLD}${CYAN}╠══════════════════════════════════════════════════════════════════════╣${NC}"
+        print_border_line "  [1] Server Setup & Tools Stack    [2] Khởi tạo Frontend Project (FE)"
+        print_border_line "  [3] Khởi tạo Backend Project (BE) [4] Quản lý Dự án (Project Manager)"
+        print_border_line "  [5] Kiểm tra bảo mật VPS (Audit)  [6] Cấu hình User VPS Deployer SSH"
+        print_border_line "  [7] Cài đặt GitLab Runner an toàn  [8] Cấu hình WARP & GitLab Connect"
+        print_border_line "  [9] Other Tools & VPS Monitor"
+        print_border_line "  [0] Quay lại Menu chính"
+        echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+        
+        read -r -p "👉 Nhập lựa chọn của bạn [0-9]: " choice
+        choice="${choice// /}"
+        case "$choice" in
+            0|"") return 0 ;;
+            1) server_setup_menu ;;
+            2)
+                if [ -f "$SCRIPT_DIR/scripts/setup/orchestrate_fe_project.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/orchestrate_fe_project.sh"
+                else
+                    echo -e "${FAIL} orchestrate_fe_project.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "fe_project"
+                ;;
+            3)
+                if [ -f "$SCRIPT_DIR/scripts/setup/orchestrate_be_project.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/orchestrate_be_project.sh"
+                else
+                    echo -e "${FAIL} orchestrate_be_project.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "be_project"
+                ;;
+            4) project_manager_menu ;;
+            5)
+                if [ -f "$SCRIPT_DIR/scripts/security/security_check.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/security/security_check.sh"
+                else
+                    echo -e "${FAIL} security_check.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "security"
+                ;;
+            6)
+                if [ -f "$SCRIPT_DIR/scripts/setup/setup_vps_deployer.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/setup_vps_deployer.sh"
+                else
+                    echo -e "${FAIL} setup_vps_deployer.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "deployer"
+                ;;
+            7)
+                runner_submenu
+                ;;
+            8)
+                if [ -f "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh"
+                else
+                    echo -e "${FAIL} setup_warp_gitlab.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "warp"
+                ;;
+            9) other_tools_menu ;;
+            *)
+                echo -e "${FAIL} Lựa chọn không hợp lệ."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# ==============================================================================
+# DEVOPS SUITE V2 (TRAEFIK & RUNNER SETUP)
+# ==============================================================================
+v2_devops_menu() {
+    local choice
+    while true; do
+        clear
+        echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+        print_border_line "         🌟 ${BOLD}${WHITE}DEVOPS SUITE V2 (TRAEFIK & RUNNER SETUP)${NC} 🌟        "
+        echo -e "${BOLD}${CYAN}╠══════════════════════════════════════════════════════════════════════╣${NC}"
+        print_border_line "  [1] Cài đặt Traefik Proxy & Tạo web network (setup_traefik.sh)"
+        print_border_line "  [2] Cài đặt mới & Hardening GitLab Runner an toàn (Non-Root)"
+        print_border_line "  [3] Tạo và cấp quyền thư mục deploy cho gitlab-runner (Domain)"
+        print_border_line "  [0] Quay lại Menu chính"
+        echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+        
+        read -r -p "👉 Nhập lựa chọn của bạn [0-3]: " choice
+        choice="${choice// /}"
+        case "$choice" in
+            0|"") return 0 ;;
+            1)
+                if [ -f "$SCRIPT_DIR/scripts/setup/traefik/setup_traefik.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/traefik/setup_traefik.sh"
+                else
+                    echo -e "${FAIL} Không tìm thấy setup_traefik.sh"; sleep 2
+                fi
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            2)
+                if [ -f "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh"
+                else
+                    echo -e "${FAIL} setup_gitlab_runner.sh không tìm thấy"; sleep 2
+                fi
+                prompt_next "runner"
+                ;;
+            3)
+                echo -e "\n📌 TẠO VÀ CẤP QUYỀN THƯ MỤC CHO GITLAB-RUNNER"
+                echo -e "------------------------------------------------------------------------"
+                local domain=""
+                while [ -z "$domain" ]; do
+                    read -p "👉 Nhập tên miền (Domain) dự án (Ví dụ: api-minitool-ai.mktsoftware.vn): " domain
+                    domain=$(echo "$domain" | tr -d '[:space:]')
+                    if [ -z "$domain" ]; then
+                        echo -e "${CROSS} Tên miền không được để trống."
+                    fi
+                done
+                
+                local deploy_dir="/home/$domain"
+                echo -e "${INFO} Đang tạo thư mục: ${BOLD}${deploy_dir}${NC}..."
+                mkdir -p "${deploy_dir}"
+                
+                echo -e "${INFO} Đang cấp quyền sở hữu thư mục cho user 'gitlab-runner'..."
+                if id "gitlab-runner" &>/dev/null; then
+                    chown -R gitlab-runner:gitlab-runner "${deploy_dir}"
+                    chmod -R 775 "${deploy_dir}"
+                    # Tránh lỗi Git safe.directory cho gitlab-runner
+                    sudo -u gitlab-runner git config --global --add safe.directory "${deploy_dir}" 2>/dev/null || true
+                    echo -e "${TICK} ${GREEN}Đã tạo thư mục ${deploy_dir} và cấp quyền 775/chown cho gitlab-runner thành công!${NC}"
+                else
+                    echo -e "${CROSS} Lỗi: Không tìm thấy user 'gitlab-runner' trên hệ thống. Vui lòng cài đặt Runner trước."
+                fi
+                read -r -p "\n👉 Nhấn Enter để quay lại..." _
+                ;;
+            *)
+                echo -e "${FAIL} Lựa chọn không hợp lệ."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# ==============================================================================
 # SUBMENU 1: SERVER SETUP & TOOLS
 # ==============================================================================
 
@@ -805,141 +1039,9 @@ dispatch_choice() {
     local choice="$1"
     case "$choice" in
         00) show_guidelines ;;
-        1)  server_setup_menu ;;
-        2)
-            if [ -f "$SCRIPT_DIR/scripts/setup/orchestrate_fe_project.sh" ]; then
-                bash "$SCRIPT_DIR/scripts/setup/orchestrate_fe_project.sh"
-            else
-                echo -e "${FAIL} orchestrate_fe_project.sh không tìm thấy"; sleep 2
-            fi
-            prompt_next "fe_project"
-            ;;
-        3)
-            if [ -f "$SCRIPT_DIR/scripts/setup/orchestrate_be_project.sh" ]; then
-                bash "$SCRIPT_DIR/scripts/setup/orchestrate_be_project.sh"
-            else
-                echo -e "${FAIL} orchestrate_be_project.sh không tìm thấy"; sleep 2
-            fi
-            prompt_next "be_project"
-            ;;
-        4)  project_manager_menu ;;
-        5)
-            if [ -f "$SCRIPT_DIR/scripts/security/security_check.sh" ]; then
-                bash "$SCRIPT_DIR/scripts/security/security_check.sh"
-            else
-                echo -e "${FAIL} security_check.sh không tìm thấy"; sleep 2
-            fi
-            prompt_next "security"
-            ;;
-        6)
-            if [ -f "$SCRIPT_DIR/scripts/setup/setup_vps_deployer.sh" ]; then
-                bash "$SCRIPT_DIR/scripts/setup/setup_vps_deployer.sh"
-            else
-                echo -e "${FAIL} setup_vps_deployer.sh không tìm thấy"; sleep 2
-            fi
-            prompt_next "deployer"
-            ;;
-        7)
-            while true; do
-                clear
-                echo -e "${BOLD}${CYAN}========================================================================${NC}"
-                echo -e "         🦊 ${BOLD}${WHITE}QUẢN TRỊ & ĐĂNG KÝ GITLAB RUNNER TRÊN VPS${NC} 🦊              "
-                echo -e "${BOLD}${CYAN}========================================================================${NC}\n"
-                echo -e "  [1] ⚙️  Cài đặt mới / Reset GitLab Runner bảo mật (Non-Root)"
-                echo -e "  [2] 🔑 Đăng ký (Register) thêm Runner mới với GitLab Server"
-                echo -e "  [3] 📋 Xem danh sách các Runner hiện có (gitlab-runner list)"
-                echo -e "  [4] 🔄 Khởi động lại dịch vụ GitLab Runner (Restart Service)"
-                echo -e "  [0] Quay lại Menu chính"
-                echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
-                read -r -p "👉 Chọn chức năng quản trị GitLab Runner [0-4]: " runner_action
-                case "$runner_action" in
-                    0|"") break ;;
-                    1)
-                        if [ -f "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh" ]; then
-                            bash "$SCRIPT_DIR/scripts/setup/setup_gitlab_runner.sh"
-                        else
-                            echo -e "${FAIL} setup_gitlab_runner.sh không tìm thấy"; sleep 2
-                        fi
-                        prompt_next "runner"
-                        ;;
-                    2)
-                        echo -e "\n🦊 Bắt đầu quy trình đăng ký Runner tương tác..."
-                        # Lấy URL
-                        read -p "👉 Nhập GitLab Instance URL (Mặc định: https://gitlab.com): " gitlab_url
-                        gitlab_url=${gitlab_url:-"https://gitlab.com"}
-                        
-                        # Lấy Token
-                        read -p "👉 Nhập GitLab Registration/Runner Token: " gitlab_token
-                        if [ -z "$gitlab_token" ]; then
-                            echo -e "${FAIL} Token không được để trống."
-                            sleep 2
-                            continue
-                        fi
-                        
-                        # Lấy Tags
-                        read -p "👉 Nhập Tags cho Runner (cách nhau bởi dấu phẩy, ví dụ: fe,be,prod. Ấn Enter để bỏ qua): " runner_tags
-                        tag_param=""
-                        [ -n "$runner_tags" ] && tag_param="--tag-list $runner_tags"
-                        
-                        # Lấy Description
-                        default_desc="Secure Docker Runner on $(hostname)"
-                        read -p "👉 Nhập mô tả Runner (Mặc định: '$default_desc'): " runner_desc
-                        runner_desc=${runner_desc:-"$default_desc"}
-                        
-                        # Lấy Docker Image mặc định
-                        default_image="alpine:latest"
-                        read -p "👉 Nhập Docker Image mặc định (Mặc định: '$default_image'): " docker_image
-                        docker_image=${docker_image:-"$default_image"}
-                        
-                        # Đăng ký chính thức
-                        if gitlab-runner register \
-                            --non-interactive \
-                            --config "/etc/gitlab-runner/config.toml" \
-                            --url "$gitlab_url" \
-                            --registration-token "$gitlab_token" \
-                            --executor "docker" \
-                            --description "$runner_desc" \
-                            --docker-image "$docker_image" \
-                            $tag_param; then
-                            echo -e "\n${OK} ${GREEN}Đăng ký Runner thành công!${NC}"
-                            chown -R gitlab-runner:gitlab-runner /etc/gitlab-runner 2>/dev/null || true
-                            chmod 640 /etc/gitlab-runner/config.toml 2>/dev/null || true
-                            systemctl restart gitlab-runner
-                        else
-                            echo -e "\n${FAIL} Đăng ký Runner thất bại."
-                        fi
-                        read -r -p "👉 Nhấn Enter để tiếp tục..." _
-                        ;;
-                    3)
-                        echo -e "\n📋 Danh sách các Runner đã đăng ký trên hệ thống:"
-                        echo -e "--------------------------------------------------------"
-                        gitlab-runner list
-                        echo -e "--------------------------------------------------------"
-                        read -r -p "👉 Nhấn Enter để tiếp tục..." _
-                        ;;
-                    4)
-                        echo -e "\n🔄 Đang khởi động lại dịch vụ gitlab-runner..."
-                        systemctl restart gitlab-runner
-                        echo -e "${OK} Khởi động lại dịch vụ thành công."
-                        read -r -p "👉 Nhấn Enter để tiếp tục..." _
-                        ;;
-                    *)
-                        echo -e "${FAIL} Lựa chọn không hợp lệ."
-                        sleep 1
-                        ;;
-                esac
-            done
-            ;;
-        8)
-            if [ -f "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh" ]; then
-                bash "$SCRIPT_DIR/scripts/setup/setup_warp_gitlab.sh"
-            else
-                echo -e "${FAIL} setup_warp_gitlab.sh không tìm thấy"; sleep 2
-            fi
-            prompt_next "warp"
-            ;;
-        9)  other_tools_menu ;;
-        10)
+        1)  v1_devops_menu ;;
+        2)  v2_devops_menu ;;
+        u|U)
             echo -e "\n🔄 ĐANG TIẾN HÀNH CẬP NHẬT STAR-BASH LÊN PHIÊN BẢN MỚI NHẤT..."
             echo -e "------------------------------------------------------------------------"
             echo -e "${INFO} Đang dọn dẹp các thay đổi cục bộ phát sinh trên VPS..."
@@ -985,7 +1087,7 @@ main_loop() {
     while true; do
         if [ -z "$pending" ]; then
             show_smart_dashboard
-            read -r -p $'\n👉 Nhập lựa chọn của bạn [0-10, 00]: ' pending
+            read -r -p $'\n👉 Nhập lựa chọn của bạn [0, 1, 2, U, 00]: ' pending
             pending="${pending// /}" # trim whitespace
         fi
         local current="$pending"
