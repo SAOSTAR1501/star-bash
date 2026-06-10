@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-06-10
+
+### Added
+- **Traefik Orchestration and Network**: Added automated Traefik Proxy setup files under `scripts/setup/traefik/` directory.
+  - **`setup_traefik.sh`**: Automated installer script that ensures `web` docker network exists, configures volume permissions, generates configs and runs the Traefik proxy.
+  - **`traefik.yml`**: Static configurations enabling Docker provider routing and Let's Encrypt automated HTTP Challenge resolver.
+  - **`docker-compose.yml`**: Defines official Traefik docker container integrated with external `web` network.
+
+---
+
 ## [1.1.0] - 2026-05-26
 
 ### Added
