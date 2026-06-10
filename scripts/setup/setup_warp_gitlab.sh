@@ -194,7 +194,10 @@ setup_ssh_for_user() {
     
     # Tạo SSH Key nếu chưa tồn tại
     if [ ! -f "$key_path" ]; then
-        ssh-keygen -t ed25519 -C "${username}-gitlab-local" -f "$key_path" -N "" >/dev/null
+        local server_name
+        server_name=$(hostname 2>/dev/null || echo "vps")
+        server_name=$(echo "$server_name" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9.-')
+        ssh-keygen -t ed25519 -C "${username}-${server_name}-gitlab-local" -f "$key_path" -N "" >/dev/null
         echo -e "  ${TICK} Đã sinh khóa SSH mới tại: ${key_path}"
     else
         echo -e "  ${WARN} Khóa SSH đã tồn tại sẵn tại: ${key_path}"

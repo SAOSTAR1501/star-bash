@@ -98,7 +98,10 @@ if [ -f "$SSH_KEY_FILE" ]; then
     echo -e "${WARN} SSH Key cho GitLab đã tồn tại sẵn. Sử dụng khóa cũ để tránh ghi đè."
 else
     # Tạo SSH Key không mật khẩu cho deployer
-    ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_FILE" -N "" -C "gitlab-ci-vps-deploy" >> /dev/null
+    local server_name
+    server_name=$(hostname 2>/dev/null || echo "vps")
+    server_name=$(echo "$server_name" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9.-')
+    ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_FILE" -N "" -C "deploy-${server_name}-gitlab" >> /dev/null
     echo -e "${TICK} Đã sinh thành công cặp SSH Key chuyên dụng."
 fi
 
