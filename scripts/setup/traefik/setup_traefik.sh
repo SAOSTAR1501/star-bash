@@ -82,7 +82,7 @@ copy_configs() {
         cat <<EOF > "${TARGET_DIR}/docker-compose.yml"
 services:
   traefik:
-    image: traefik:v2.10
+    image: traefik:v3.6.1
     container_name: traefik
     restart: always
     ports:
