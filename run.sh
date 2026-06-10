@@ -634,10 +634,12 @@ server_setup_menu() {
         echo -e "       (Quét tài nguyên đột biến, an ninh, phát hiện malware và gửi Alert tự động)"
         echo -e "  [5] ⚡ ${BOLD}Chạy kiểm tra tức thì & Gửi thông báo test (Instant Check)${NC}"
         echo -e "       (Quét nhanh tài nguyên & an ninh VPS ngay bây giờ)"
+        echo -e "  [6] 🐳 ${BOLD}Cài đặt Traefik Proxy & Tạo web network (setup_traefik.sh)${NC}"
+        echo -e "       (Tạo docker network 'web' và khởi chạy container Traefik SSL)"
         echo -e "  [0] Quay lại Menu chính"
         echo -e "\n${BOLD}${CYAN}========================================================================${NC}"
         
-        read -r -p "👉 Nhập lựa chọn của bạn [0-5]: " choice
+        read -r -p "👉 Nhập lựa chọn của bạn [0-6]: " choice
         case "$choice" in
             0|"") return 0 ;;
             1)
@@ -669,6 +671,12 @@ server_setup_menu() {
                     bash "$SCRIPT_DIR/scripts/monitor/system_monitor.sh"
                     echo -e "${OK} Hoàn thành quét. Nếu có bất thường hoặc lỗi phát sinh, thông báo đã được gửi đi."
                 else echo -e "${FAIL} Không tìm thấy file system_monitor.sh tại scripts/monitor/"; fi
+                read -r -p "👉 Nhấn Enter để tiếp tục..." _
+                ;;
+            6)
+                if [ -f "$SCRIPT_DIR/scripts/setup/traefik/setup_traefik.sh" ]; then
+                    bash "$SCRIPT_DIR/scripts/setup/traefik/setup_traefik.sh"
+                else echo -e "${FAIL} Không tìm thấy setup_traefik.sh"; fi
                 read -r -p "👉 Nhấn Enter để tiếp tục..." _
                 ;;
             *)
