@@ -81,9 +81,9 @@ show_smart_dashboard() {
 
     # Block QUICK MENU
     print_border_line " ${GREEN}🏃 MAIN CONTROL CENTER${NC}"
-    print_border_line "  [1] DevOps Suite v1 (Legacy)       [2] DevOps Suite v2 (Traefik & Runner)"
-    print_border_line "  [U] Cập nhật Star-Bash (Update)    [00] Cẩm nang Hướng dẫn (Guidelines)"
-    print_border_line "  [0] Thoát chương trình"
+    print_border_line "  [1] DevOps Suite v1 (Legacy)       [2] DevOps Suite v2 (Traefik)"
+    print_border_line "  [3] DevOps Suite v3 (Quick Setup)  [U] Cập nhật Star-Bash (Update)"
+    print_border_line "  [00] Cẩm nang Hướng dẫn             [0] Thoát chương trình"
     echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
 }
 
@@ -847,6 +847,17 @@ v2_devops_menu() {
 }
 
 # ==============================================================================
+# DEVOPS SUITE V3 (NEW VPS QUICK-SETUP WORKFLOW)
+# ==============================================================================
+v3_devops_menu() {
+    if [ -f "$SCRIPT_DIR/scripts/setup/v3_setup.sh" ]; then
+        bash "$SCRIPT_DIR/scripts/setup/v3_setup.sh"
+    else
+        echo -e "${FAIL} scripts/setup/v3_setup.sh không tìm thấy"; sleep 2
+    fi
+}
+
+# ==============================================================================
 # SUBMENU 1: SERVER SETUP & TOOLS
 # ==============================================================================
 
@@ -1041,6 +1052,7 @@ dispatch_choice() {
         00) show_guidelines ;;
         1)  v1_devops_menu ;;
         2)  v2_devops_menu ;;
+        3)  v3_devops_menu ;;
         u|U)
             echo -e "\n🔄 ĐANG TIẾN HÀNH CẬP NHẬT STAR-BASH LÊN PHIÊN BẢN MỚI NHẤT..."
             echo -e "------------------------------------------------------------------------"
@@ -1087,7 +1099,7 @@ main_loop() {
     while true; do
         if [ -z "$pending" ]; then
             show_smart_dashboard
-            read -r -p $'\n👉 Nhập lựa chọn của bạn [0, 1, 2, U, 00]: ' pending
+            read -r -p $'\n👉 Nhập lựa chọn của bạn [0, 1, 2, 3, U, 00]: ' pending
             pending="${pending// /}" # trim whitespace
         fi
         local current="$pending"
